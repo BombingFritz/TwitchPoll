@@ -491,15 +491,15 @@
             });
         });
 
-        function showWinnerAnnouncement(optionName) {
+        function showWinnerAnnouncement(optionName, isTie = false) {
             const el = document.getElementById('winnerAnnouncement');
             if (!el) return;
-            if (!optionName) {
+            if (!optionName && !isTie) {
                 el.textContent = '';
                 el.classList.remove('visible');
                 return;
             }
-            el.textContent = `Sieger: ${optionName}`;
+            el.textContent = isTie ? 'Kein Sieger - Gleichstand' : `Sieger: ${optionName}`;
             requestAnimationFrame(() => {
                 el.classList.add('visible');
             });
@@ -570,7 +570,7 @@
                 [8700, [15, 12, 5]], [8950, [15, 13, 5]], [11000, [19, 18, 9]], [11200, [19, 19, 9]],
                 [11400, [20, 19, 9]], [11600, [20, 20, 9]], [13500, [24, 24, 13]], [13700, [25, 24, 13]],
                 [13900, [25, 25, 13]], [15500, [28, 29, 16]], [15700, [29, 29, 16]], [15900, [29, 30, 16]],
-                [17100, [31, 31, 18]]
+                [17100, [31, 32, 18]]
             ];
 
             updates.forEach(([delay, votes]) => {
@@ -585,19 +585,11 @@
                     title: 'Wie esst ihr Spargel am liebsten?',
                     status: 'completed',
                     choices: [
-                        { id: 'opt-a', title: 'Mit Hollandaise', votes: 10 },
-                        { id: 'opt-b', title: 'Mit Butter', votes: 9 },
-                        { id: 'opt-c', title: 'Pur mit Salz', votes: 6 }
+                        { id: 'opt-a', title: 'Mit Hollandaise', votes: 31 },
+                        { id: 'opt-b', title: 'Mit Butter', votes: 32 },
+                        { id: 'opt-c', title: 'Pur mit Salz', votes: 18 }
                     ]
                 });
-            });
-
-            queueMock(18450, () => {
-                updatePollFromAPI(createMockPollData(10, 9, 6));
-            });
-
-            queueMock(18850, () => {
-                updatePollFromAPI(createMockPollData(10, 9, 6));
             });
         }
 
@@ -782,7 +774,11 @@
                         ...currentPoll,
                         id: event.id,
                         question: event.title,
-                        options: currentPoll.options,
+                        options: event.choices.map(choice => ({
+                            id: choice.id,
+                            name: choice.title,
+                            votes: choice.votes || 0
+                        })),
                         ended: true
                     };
 
@@ -843,8 +839,15 @@
         }
         function findWinner(options) {
             if (!options || options.length === 0) return null;
-            let maxVotes = Math.max(...options.map(o => o.votes));
-            return options.find(o => o.votes === maxVotes);
+            const maxVotes = Math.max(...options.map(o => o.votes));
+            const winners = options.filter(o => o.votes === maxVotes);
+            return winners.length === 1 ? winners[0] : null;
+        }
+
+        function hasTie(options) {
+            if (!options || options.length === 0) return false;
+            const maxVotes = Math.max(...options.map(o => o.votes));
+            return options.filter(o => o.votes === maxVotes).length > 1;
         }
         function renderPoll(data, isInitial = false) {
             document.getElementById('pollQuestion').textContent = data.question;
@@ -859,9 +862,10 @@
 
             const optionsWithPercentages = calculatePercentages(data.options);
             const maxVotes = data.ended && optionsWithPercentages.length ? Math.max(...optionsWithPercentages.map(o => o.votes)) : null;
+            const tieAtTop = data.ended && hasTie(optionsWithPercentages);
 
             optionsWithPercentages.forEach((option, index) => {
-                const isWinner = data.ended && option.votes === maxVotes;
+                const isWinner = data.ended && !tieAtTop && option.votes === maxVotes;
                 const level = getBarLevel(option.percentage);
 
                 if (isInitial) {
@@ -883,7 +887,9 @@
                     setTimeout(() => {
                         bar.classList.add('visible');
                         setBarLevel(bar, level);
-                        if (isWinner && data.ended) {
+                        if (data.ended && tieAtTop) {
+                            showWinnerAnnouncement('', true);
+                        } else if (isWinner && data.ended) {
                             bar.classList.add('winner');
                             triggerWinnerDecoration(bar);
                             showWinnerAnnouncement(option.name);
@@ -903,9 +909,13 @@
         function updatePollValues(data) {
             const optionsWithPercentages = calculatePercentages(data.options);
             const maxVotes = data.ended && optionsWithPercentages.length ? Math.max(...optionsWithPercentages.map(o => o.votes)) : null;
+            const tieAtTop = data.ended && hasTie(optionsWithPercentages);
+            if (tieAtTop) {
+                showWinnerAnnouncement('', true);
+            }
 
             optionsWithPercentages.forEach(option => {
-                const isWinner = data.ended && option.votes === maxVotes;
+                const isWinner = data.ended && !tieAtTop && option.votes === maxVotes;
                 const level = getBarLevel(option.percentage);
 
                 const bar = document.querySelector(`[data-option-id="${option.id || option.name}"].poll-option`);

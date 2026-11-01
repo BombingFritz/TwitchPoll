@@ -2,7 +2,7 @@
 
 ## Nach 0.8.2 zu prüfen
 1. **Live-Test im Stream:** In OBS per `file:///`-URL eingebunden läuft 0.8.2 (Test 01.11.2026). Ein Durchlauf mit echter Abstimmung, Endsequenz und Chat-Nachricht im Stream steht aus.
-2. **Andere Widgets:** Coinflip, Enigma usw. sind vermutlich ebenfalls betroffen, wenn sie als „Lokale Datei“ eingebunden sind, und sollten auf `file:///`-URLs umgestellt werden.
+2. **Andere Widgets (geprüft 01.11.2026):** Coinflip war ebenfalls betroffen und ist auf `file:///`-URL umgestellt. Enigma ist nicht betroffen: Es fragt nichts bei `localhost` an, und die Sperre greift nur bei solchen Anfragen, nicht beim Laden der Datei.
 3. **Option für später: Widgets vom Auth-Server ausliefern** (`http://localhost:3000/widgets/…`). Bewusst noch nicht umgesetzt. Abwägung:
    - Vorteile: Seite und Server haben dieselbe Herkunft, damit greift keine Chromium-Sperre und CORS ist für Widgets unnötig. Die Herkünfte `null` und `http://absolute` könnten aus der Erlaubt-Liste entfallen. Der Server kann Caching der HTML-Dateien verhindern, sodass OBS immer die aktuelle Version lädt. Einheitliche Adressen für alle Widgets, später direkt aus dem Git-Klon.
    - Nachteile: Ohne laufenden Server lädt OBS die Seite gar nicht, und die Start-Wiederholung im Widget hilft dann nicht. Nach einem Serverabsturz müssten die Quellen in OBS neu geladen werden. Der Server bekommt eine weitere Aufgabe (Dateien ausliefern, Widget-Ordner per `.env`, der nie der Server-Ordner sein darf). Jede Browser-Source muss umgestellt werden. Widgets und Server werden enger gekoppelt.

@@ -4,7 +4,8 @@
 - Bei Konflikt mit einem ADR erst nachfragen.
 - Referenz ist immer `SpargelPoll.html` im aktuellen Stand von `main`.
 - Versionen nur über `CHANGELOG.md` und Git-Tags (`vX.Y.Z`), nie über den Dateinamen.
-- Im Repository nur Platzhalter für Client-ID, Broadcaster-ID und Tokens; keine Secrets ausgeben.
+- IDs und Token kommen vom Auth-Server; im Repository nie echte IDs oder Tokens. Keine Secrets ausgeben.
+- `WIDGET_VERSION` bei jeder neuen Version zusammen mit `CHANGELOG.md` anpassen.
 - Bestehende Struktur erhalten: eine HTML-Datei, Inline-CSS/JS, drei eingebettete PNGs.
 - Nur beauftragte, gezielte Änderungen; kein Neuaufbau der Datei aus Suchsnippets.
 - Timer, Layout, API-Anbindung und Animation ohne Auftrag unverändert lassen.

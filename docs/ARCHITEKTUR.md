@@ -7,7 +7,8 @@ Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klass
 ## Funktionsbereiche
 | Bereich | Funktionen | Aufgabe |
 |---|---|---|
-| Start/Auth | `init`, `fetchAccessToken`, `getUserId` | Token laden, Konfiguration prüfen, ggf. Benutzer-ID bestimmen, Polling starten |
+| Start/Auth | `init`, `fetchAccessToken`, `getUserId`, `scheduleInitRetry` | Token laden, Konfiguration prüfen, ggf. Benutzer-ID bestimmen, Polling starten; bei nicht erreichbarem Auth-Server Start später wiederholen |
+| Token-Erneuerung | `requestNewToken`, `refreshAccessToken`, `twitchFetchWithRefresh` | Bei HTTP 401/403 neuen Token holen und den Twitch-Aufruf einmal wiederholen |
 | Poll-Daten | `checkForActivePoll`, `handlePollFromAPI`, `updatePollFromAPI`, `getPollEndsAt` | API-Status übernehmen, aktive Poll aufbauen/aktualisieren, Endzeit bestimmen |
 | Timer | `startTimer`, `stopTimer`, `updateTimer` | Restsekunden anzeigen, Intervall 100 ms |
 | Ergebnis | `calculatePercentages`, `findWinner`, `triggerPollEnded` | Prozent, Gewinner-/Gleichstand-Erkennung und Endsequenz |
@@ -18,11 +19,13 @@ Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klass
 | Sichtbarkeit | `showWidget`, `hideWhenNoPoll`, `showNoPoll`, `updateStatus` | Widget-/Leerzustand und Statuspunkt |
 
 ## Datenhaltung
-Nur flüchtiger JS-Zustand: `currentPoll`, `currentPollId`, `timerInterval`, `pollCheckInterval`, `pollEndTime`, `pollEndedInProgress`, `resultSoundPlayed`, `sharedAudioCtx`. Kein Widget-Dateispeicher oder persistenter Poll-Verlauf.
+Nur flüchtiger JS-Zustand: `currentPoll`, `currentPollId`, `timerInterval`, `pollCheckInterval`, `pollEndTime`, `pollEndedInProgress`, `resultSoundPlayed`, `sharedAudioCtx`, `tokenRefreshPromise`, `lastTokenRefreshAttempt`, `initRetryCount`, `initRetryTimer`. Kein Widget-Dateispeicher oder persistenter Poll-Verlauf.
 Poll-Modell: `{id, question, options: [{id, name, votes}], ended}`; Prozentfelder werden berechnet.
 
 ## Datenfluss und Zeitverhalten
 - `init` lädt den Token im Inline-Block und erneut über `fetchAccessToken`, führt die erste Poll-Abfrage aus und setzt ein Idle-Intervall.
+- Schlägt einer der beiden Token-Abrufe fehl, zeigt das Widget „Auth-Server nicht erreichbar!“ und plant über `scheduleInitRetry` einen neuen `init`-Versuch nach 10 s, 30 s und danach alle 60 s. Nach erfolgreichem Start wird der Zähler zurückgesetzt und „Warte auf Abstimmung...“ angezeigt.
+- Poll-Abfrage und Chat-Versand laufen über `twitchFetchWithRefresh`: Bei HTTP 401/403 wird über `refreshAccessToken` ein neuer Token vom Auth-Server geholt und der Aufruf genau einmal wiederholt. Parallele Erneuerungen teilen sich einen Request; zwischen zwei Erneuerungen liegen mindestens 30 s. Hat ein paralleler Aufruf den Token schon erneuert, wird nur wiederholt. `getUserId` nutzt diesen Weg nicht.
 - `checkForActivePoll` verwendet den ersten zurückgegebenen Poll. Neue aktive ID: `handlePollFromAPI`, initiales Rendering, Timer, aktives Intervall. Bekannte aktive Poll: `updatePollFromAPI` → `updatePollValues`.
 - Endstatus `COMPLETED`, `TERMINATED`, `ARCHIVED` einer angezeigten Poll startet `triggerPollEnded`; `pollEndedInProgress` verhindert Wiederholung.
 - Endsequenz: Polling/Timer stoppen → Endwerte übernehmen → Ende-Overlay 3000 ms.
@@ -39,7 +42,7 @@ Segmente = `Math.max(0, Math.round(percentage/10))`. Updates fügen nur zusätzl
 ## Sound und Chat
 Sound: zwei kurze Dreieck-Töne C5/E5 und ein gehaltener Sägezahn-Dreiklang C5–E5–G5. `resultSoundPlayed` verhindert Mehrfachauslösung. `click`, `keydown`, `touchstart`, `pointerdown` versuchen, den AudioContext fortzusetzen. Es gibt kein Audio-Dateiasset.
 
-Chat: Normalfall nennt Sieger und, wenn vorhanden, Zweitplatzierten, sortiert nach Stimmen. Gleichstand nennt alle Optionen mit Höchststimmenzahl, verbunden mit „ sowie “. Textmuster siehe Spec. Versand als Broadcaster; kein zusätzliches Chat-Ausgabefeld im Widget. Nicht erfolgreiche HTTP-Antworten und `is_sent=false` werden geloggt; kein Retry im Code.
+Chat: Normalfall nennt Sieger und, wenn vorhanden, Zweitplatzierten, sortiert nach Stimmen. Gleichstand nennt alle Optionen mit Höchststimmenzahl, verbunden mit „ sowie “. Textmuster siehe Spec. Versand als Broadcaster; kein zusätzliches Chat-Ausgabefeld im Widget. Nicht erfolgreiche HTTP-Antworten und `is_sent=false` werden geloggt, zusätzlich mit dem Nachrichtentext zum manuellen Posten. Abgesehen von der einmaligen Wiederholung nach Token-Erneuerung (401/403) gibt es kein Retry.
 
 ## Schnittstellen
 | Ziel | Aufruf | Daten |
@@ -54,7 +57,7 @@ Twitch-Header: `Authorization: Bearer <ACCESS_TOKEN>`, `Client-Id: <CLIENT_ID>`;
 Separates Projekt mit eigenem Repository, läuft lokal auf Port 3000. Das Widget nutzt davon nur `GET /token`:
 - Erfolg: `200` mit `{ "access_token": "…", "broadcaster_id": "…" }`. Das Widget liest derzeit nur `access_token`.
 - Keine gespeicherten Tokens oder Refresh fehlgeschlagen: `401` mit `{ "error": "…", "hint": "…" }`.
-- Der Server erneuert den Twitch-Token selbst, sobald dieser weniger als 5 Minuten gültig ist. Vorher liefert er den gespeicherten Token unverändert.
+- Der Server erneuert den Twitch-Token selbst, sobald dieser weniger als 5 Minuten gültig ist. Vorher liefert er den gespeicherten Token unverändert. Fordert das Widget nach einem 401 einen neuen Token an, bekommt es deshalb unter Umständen denselben Token zurück (siehe `OFFEN.md`).
 
 ## Konfiguration
 | Konstante | Wert | Bedeutung |
@@ -68,6 +71,8 @@ Separates Projekt mit eigenem Repository, läuft lokal auf Port 3000. Das Widget
 | `RESULT_DISPLAY_DURATION` | `7000` | Ergebnisdauer im festen Ausblendpfad in ms |
 | `POLL_CHECK_INTERVAL_ACTIVE` | `2000` | aktives Abfrageintervall in ms |
 | `POLL_CHECK_INTERVAL_IDLE` | `5000` | Idle-Abfrageintervall in ms |
+| `AUTH_RETRY.START_DELAYS_MS` | `[10000, 30000, 60000]` | Wartezeiten der Start-Wiederholungen; der letzte Wert wiederholt sich |
+| `AUTH_RETRY.REFRESH_COOLDOWN_MS` | `30000` | Mindestabstand zwischen zwei Token-Erneuerungen |
 Im Repository stehen nur Platzhalter. Bleibt `BROADCASTER_ID` auf `DEINE_BROADCASTER_ID_HIER`, ermittelt das Widget die ID über `GET /helix/users` aus dem Token. Steht `CLIENT_ID` noch auf `DEINE_CLIENT_ID_HIER`, bricht der Start mit „Konfiguration fehlt!“ ab.
 
 ## Abhängigkeiten und andere Systeme

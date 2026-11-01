@@ -3,6 +3,7 @@ Historische Angaben stammen aus Diskussion/Zusammenfassungen, nicht aus einer hi
 
 | Symptom | Ursache | Fix | Regel zur Vermeidung |
 |---|---|---|---|
+| **Offen:** Nach OBS-Update bleibt das Widget beim Start ohne gültigen Token hängen (beobachtet mit 0.8.0) | Nicht abschließend geklärt. Im Code belegt: 0.8.0 bricht `init()` bei einem Token-Fehler ohne Wiederholung ab. Vermutet: OBS-Browser-Cache liefert eine alte `/token`-Antwort; der erste Token-Abruf in `init()` nutzt kein `cache: 'no-store'`, der Server sendet kein `Cache-Control`. | 0.8.1: automatische Start-Wiederholung. Geplant für 0.8.2: Cache-Schutz in Widget und Server (siehe `OFFEN.md`). | Token-Abrufe immer mit `cache: 'no-store'`; Token-Antworten nicht cachebar ausliefern; Start mit verzögert startendem Server testen. |
 | Unruhiger Aufbau, springende/falsch positionierte Bildelemente | Laut Nutzer zu häufige Neuaufbauversuche bei jedem „tic“ und ungeeignete Bildänderungen | Heute anders aufgebaut; aktuelle Animation laut Nutzer fehlerfrei. Code verwendet differenzielle Updates. | Stabilität bei Stimmenupdates testen; keine unnötigen Neuaufbauten. |
 | Siegeranimation begann vor Wachstum | Historisch zu früher Trigger | Delay nach Segmentwachstum | Wachstum und Sieger-Trigger gemeinsam prüfen. |
 | Späte Progress-Events zerstörten Endzustand | Historische EventSub-Race-Condition | Endzustands-Guard; später REST-Polling | Endzustand nicht überschreiben; Folgepoll testen. |

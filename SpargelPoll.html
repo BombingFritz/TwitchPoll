@@ -537,6 +537,78 @@
             return msg;
         }
 
+        // ===== NEU (v3): Token-Erneuerung bei 401/403 + Start-Retry für den Auth-Server =====
+        const AUTH_RETRY = {
+            START_DELAYS_MS: [10000, 30000, 60000],  // Wartezeiten der Start-Versuche; letzter Wert wiederholt sich
+            REFRESH_COOLDOWN_MS: 30000               // Mindestabstand zwischen zwei Token-Erneuerungen
+        };
+        let tokenRefreshPromise = null;
+        let lastTokenRefreshAttempt = 0;
+        let initRetryCount = 0;
+        let initRetryTimer = null;
+
+        // Holt einen neuen Token OHNE die Anzeige zu verändern (fetchAccessToken() überschreibt die Poll-Frage).
+        async function requestNewToken() {
+            try {
+                const response = await fetch(CONFIG.TOKEN_ENDPOINT, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`Auth-Server antwortet mit ${response.status}`);
+                const data = await response.json();
+                if (!data.access_token) throw new Error('Kein access_token im Response');
+                CONFIG.ACCESS_TOKEN = data.access_token;
+                return true;
+            } catch (error) {
+                console.error('[AUTH] ❌ Token-Erneuerung fehlgeschlagen:', error);
+                return false;
+            }
+        }
+
+        // Erneuert den Token. Parallele Aufrufe teilen sich einen Request; zwischen zwei Versuchen gilt ein Cooldown.
+        function refreshAccessToken(reason) {
+            if (!CONFIG.TOKEN_ENDPOINT) return Promise.resolve(false);
+            if (tokenRefreshPromise) return tokenRefreshPromise;
+            const sinceLast = Date.now() - lastTokenRefreshAttempt;
+            if (sinceLast < AUTH_RETRY.REFRESH_COOLDOWN_MS) {
+                console.warn(`[AUTH] ⏸️ Token-Erneuerung übersprungen (${reason}): letzter Versuch vor ${Math.round(sinceLast / 1000)}s, Cooldown ${AUTH_RETRY.REFRESH_COOLDOWN_MS / 1000}s.`);
+                return Promise.resolve(false);
+            }
+            lastTokenRefreshAttempt = Date.now();
+            console.warn(`[AUTH] 🔄 Erneuere Access-Token (${reason})...`);
+            tokenRefreshPromise = requestNewToken().then(function(ok) {
+                if (ok) console.log('[AUTH] ✅ Access-Token erneuert.');
+                return ok;
+            }).finally(function() { tokenRefreshPromise = null; });
+            return tokenRefreshPromise;
+        }
+
+        // fetch für Twitch-Aufrufe: bei 401/403 Token erneuern und genau EINMAL wiederholen.
+        // makeOptions wird pro Versuch aufgerufen, damit der aktuelle Token verwendet wird.
+        async function twitchFetchWithRefresh(url, makeOptions, label) {
+            const tokenUsed = CONFIG.ACCESS_TOKEN;
+            const response = await fetch(url, makeOptions());
+            if (response.status !== 401 && response.status !== 403) return response;
+            console.warn(`[AUTH] ⚠️ ${label}: HTTP ${response.status} - Token evtl. abgelaufen oder Scope fehlt.`);
+            if (CONFIG.ACCESS_TOKEN !== tokenUsed) {
+                // Token wurde inzwischen (von einem parallelen Aufruf) erneuert -> nur wiederholen
+                return fetch(url, makeOptions());
+            }
+            const refreshed = await refreshAccessToken(`${label} HTTP ${response.status}`);
+            if (!refreshed) return response;
+            return fetch(url, makeOptions());
+        }
+
+        // Plant einen erneuten init()-Start, wenn der Auth-Server beim Start nicht erreichbar war.
+        function scheduleInitRetry() {
+            if (initRetryTimer) return;
+            const delays = AUTH_RETRY.START_DELAYS_MS;
+            const delay = delays[Math.min(initRetryCount, delays.length - 1)];
+            initRetryCount++;
+            console.warn(`[AUTH] ⏳ Auth-Server nicht erreichbar - nächster Startversuch (#${initRetryCount + 1}) in ${delay / 1000}s.`);
+            initRetryTimer = setTimeout(function() {
+                initRetryTimer = null;
+                init();
+            }, delay);
+        }
+
         // NEU: Sendet eine Nachricht per Twitch Helix API tatsächlich in den Chat des Broadcasters.
         // Endpoint: POST /helix/chat/messages (siehe https://dev.twitch.tv/docs/chat/send-receive-messages/)
         // WICHTIG: Der Access-Token muss den Scope "user:write:chat" besitzen. Falls der lokale
@@ -545,10 +617,11 @@
         async function sendChatMessage(message) {
             if (!CONFIG.ACCESS_TOKEN || !CONFIG.BROADCASTER_ID) {
                 console.warn('[CHAT] Kein Access-Token oder keine Broadcaster-ID vorhanden - Nachricht wird nicht gesendet.');
+                console.error('[CHAT] ❌ Nachricht NICHT gesendet. Text zum manuellen Posten:', message);
                 return;
             }
             try {
-                const response = await fetch('https://api.twitch.tv/helix/chat/messages', {
+                const response = await twitchFetchWithRefresh('https://api.twitch.tv/helix/chat/messages', () => ({
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${CONFIG.ACCESS_TOKEN}`,
@@ -560,7 +633,7 @@
                         sender_id: CONFIG.BROADCASTER_ID,
                         message: message
                     })
-                });
+                }), 'Chat');
 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -569,6 +642,7 @@
                         console.error('[CHAT] ℹ️ Hinweis: Zum Senden von Chat-Nachrichten benötigt der Access-Token ' +
                             'den Scope "user:write:chat". Bitte im Auth-Server ergänzen und den Token neu autorisieren.');
                     }
+                    console.error('[CHAT] ❌ Nachricht NICHT gesendet. Text zum manuellen Posten:', message);
                     return;
                 }
 
@@ -578,9 +652,11 @@
                     console.log('%c✅ Chat-Nachricht gesendet', 'color:#4a7c23;font-weight:bold;', message);
                 } else {
                     console.warn('[CHAT] ⚠️ Twitch hat die Nachricht angenommen, aber nicht gesendet (z.B. Chat-Filter):', data);
+                    console.error('[CHAT] ❌ Nachricht NICHT gesendet. Text zum manuellen Posten:', message);
                 }
             } catch (error) {
                 console.error('[CHAT] ❌ Fehler beim Senden der Chat-Nachricht:', error);
+                console.error('[CHAT] ❌ Nachricht NICHT gesendet. Text zum manuellen Posten:', message);
             }
         }
 
@@ -684,12 +760,12 @@
 
         async function checkForActivePoll() {
             try {
-                const response = await fetch(`https://api.twitch.tv/helix/polls?broadcaster_id=${CONFIG.BROADCASTER_ID}`, {
+                const response = await twitchFetchWithRefresh(`https://api.twitch.tv/helix/polls?broadcaster_id=${CONFIG.BROADCASTER_ID}`, () => ({
                     headers: {
                         'Authorization': `Bearer ${CONFIG.ACCESS_TOKEN}`,
                         'Client-Id': CONFIG.CLIENT_ID
                     }
-                });
+                }), 'Poll-Abfrage');
                 if (!response.ok) {
                     console.warn('⚠️ Poll-API Fehler:', response.status);
                     return;
@@ -928,6 +1004,7 @@
         } catch (err) {
             console.error('❌ Token-Fehler:', err);
             document.getElementById('pollQuestion').textContent = 'Auth-Server nicht erreichbar!';
+            scheduleInitRetry();
             return;
         }
    	 }
@@ -937,7 +1014,7 @@
             // Token vom Auth-Server holen
             if (CONFIG.TOKEN_ENDPOINT) {
                 const success = await fetchAccessToken();
-                if (!success) return;
+                if (!success) { scheduleInitRetry(); return; }
             }
 
             if (CONFIG.CLIENT_ID === 'DEINE_CLIENT_ID_HIER') {
@@ -960,6 +1037,13 @@
                 } else {
                     return;
                 }
+            }
+
+            // NEU (v3): Nach erfolgreichem Start-Retry Hinweistext zurücksetzen
+            if (initRetryCount > 0) {
+                console.log(`[AUTH] ✅ Start nach ${initRetryCount} Wiederholung(en) erfolgreich.`);
+                initRetryCount = 0;
+                document.getElementById('pollQuestion').textContent = 'Warte auf Abstimmung...';
             }
 
             // Direkt mit Polling starten (kein WebSocket nötig)

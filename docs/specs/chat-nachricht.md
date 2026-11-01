@@ -14,7 +14,8 @@ Zusätzliches Textfeld im Widget; Chat-Befehle; Tiebreaker.
 - Gleichstand nennt alle Optionen mit Höchststimmenzahl.
 - Auch 0:0 wird als Gleichstand ausgegeben.
 - Ohne Token/ID wird kein Versand versucht.
-- HTTP-Fehler und is_sent=false werden geloggt.
+- HTTP-Fehler und is_sent=false werden geloggt, jeweils mit dem Nachrichtentext zum manuellen Posten.
+- Bei 401/403 wird nach Token-Erneuerung genau einmal erneut gesendet.
 - Versand erfolgt unverändert bei Overlay-Ende, nicht erst mit Siegesanimation.
 
 ## Berührte Dateien/Funktionen

@@ -3,6 +3,23 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [Semantic Versioning](https://semver.org/lang/de/).
 Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“) sind nicht mehr zuverlässig zuordenbar und erhalten keine nachträglichen Versionsnummern.
 
+## [0.8.2] - 2026-11-01
+
+Braucht den Auth-Server-Stand mit `client_id` in `/token` (Twitch Companion JS server, Zugriffsschutz laut dessen ADR 0013). Im Headless-Browser gegen einen Test-Server und eine simulierte Twitch-API geprüft; noch nicht in OBS und nicht im Live-Stream erprobt.
+
+### Changed
+- Client-ID und Broadcaster-ID kommen vom Auth-Server (`/token`). In `CONFIG` stehen keine IDs mehr; manuell eingetragene IDs haben weiterhin Vorrang.
+
+### Fixed
+- Beim Start wird der Token nur noch einmal und ohne Browser-Cache abgerufen (`cache: 'no-store'`). Vorher gab es einen zweiten Abruf ohne diesen Schutz.
+
+### Added
+- `WIDGET_VERSION`: Das Widget loggt beim Start seine Version, um zu prüfen, welche Datei OBS geladen hat.
+- Klare Konsolenmeldung, wenn der Auth-Server keine `client_id` liefert.
+
+### Security
+- Gegenstück im Auth-Server: `/token` nur noch für lokale Aufrufe und erlaubte Browser-Herkünfte, Antworten mit `Cache-Control: no-store`.
+
 ## [0.8.1] - 2026-11-01
 
 Entspricht der lokal als `polling-soundChat3.html` geführten Datei, mit Platzhaltern statt echter IDs. Noch nicht im Live-Stream erprobt.

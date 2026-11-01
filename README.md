@@ -19,26 +19,24 @@ Das Widget ist eine einzelne HTML-Datei (`SpargelPoll.html`) mit eingebettetem C
 ## Voraussetzungen
 
 - OBS (Browser-Source) oder ein aktueller Browser.
-- Eine Twitch-App (Client-ID) und ein lokaler Auth-Server, der unter `GET http://localhost:3000/token` ein JSON mit `access_token` liefert. Der Server ist ein separates Projekt und nicht Teil dieses Repositorys.
+- Der lokale Auth-Server [Twitch Companion JS server](https://github.com/BombingFritz/Twitch-Companion-JS-server). Er liefert unter `GET http://localhost:3000/token` Access-Token, Client-ID und Broadcaster-ID. Das Widget braucht dafür einen Server-Stand, der `client_id` mitliefert.
 - Der Token des Auth-Servers braucht mindestens die Scopes `channel:read:polls` (oder `channel:manage:polls`) und `user:write:chat`.
 
 ## Einrichtung
 
-1. `SpargelPoll.html` kopieren, z. B. als `SpargelPoll.local.html` (diese Endung ist per `.gitignore` von Commits ausgeschlossen).
-2. In der Kopie im Block `CONFIG` die `CLIENT_ID` eintragen.
-   `BROADCASTER_ID` kann auf dem Platzhalter bleiben: Das Widget ermittelt die ID dann selbst über den Token.
-   Bei Bedarf `TOKEN_ENDPOINT` anpassen. `ACCESS_TOKEN` bleibt leer.
-3. Auth-Server starten.
-4. In OBS eine Browser-Source anlegen: „Lokale Datei“, Breite 800, Höhe 600.
-5. Beim Test im normalen Browser einmal in die Seite klicken, damit der Browser Audio freigibt.
+1. Auth-Server starten.
+2. In OBS eine Browser-Source anlegen: „Lokale Datei“ → `SpargelPoll.html`, Breite 800, Höhe 600.
+   Im HTML muss nichts eingetragen werden: Token und IDs kommen vom Auth-Server.
+3. Beim Test im normalen Browser einmal in die Seite klicken, damit der Browser Audio freigibt.
+4. In der Server-Konsole erscheint beim ersten Abruf `[Token] Ausgabe an Widget-Herkunft: …`. Daran sieht man, dass das Widget den Server erreicht.
 
-Echte IDs gehören nie ins Repository, nur Platzhalter.
+Optional: In `CONFIG` lassen sich `CLIENT_ID`, `BROADCASTER_ID` und `TOKEN_ENDPOINT` manuell setzen; manuelle IDs haben Vorrang vor denen des Servers. Eine solche Kopie als `SpargelPoll.local.html` speichern, diese Endung ist per `.gitignore` von Commits ausgeschlossen. Echte IDs gehören nie ins Repository.
 
 ## Versionierung
 
 - Versionen werden als Git-Tags `vMAJOR.MINOR.PATCH` vergeben und im [CHANGELOG](CHANGELOG.md) beschrieben.
 - Der Dateiname bleibt immer `SpargelPoll.html`. Keine Versionsnummern im Dateinamen, damit der OBS-Pfad gleich bleibt.
-- Ältere Stände sind über die Tags erreichbar. Frühere Dateien vor 0.8.0 sind nicht mehr sauber zuordenbar; der alte Animationstest liegt unter dem Tag `archiv/animationstest-2026-04`.
+- Ältere Stände sind über die Tags erreichbar. Frühere Dateien vor 0.8.0 sind nicht mehr sauber zuordenbar; der alte Animationstest liegt im Branch `archiv/animationstest-2026-04`.
 
 ## Dokumentation
 

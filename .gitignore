@@ -1,0 +1,27 @@
+# Lokale Secrets und Konfiguration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+token*.json
+# Abhängigkeiten und Tool-Caches (falls lokal verwendet)
+node_modules/
+.cache/
+__pycache__/
+*.pyc
+# Lokale Logs und temporäre Dateien
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+# Lokale Widget-Kopien mit echten IDs
+*.local.html
+# Erzeugte Lieferartefakte
+output/
+*-doku.zip
+# Betriebssystem
+.DS_Store
+Thumbs.db

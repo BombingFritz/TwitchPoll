@@ -59,6 +59,7 @@ Twitch-Header: `Authorization: Bearer <ACCESS_TOKEN>`, `Client-Id: <CLIENT_ID>`;
 Separates Projekt mit eigenem Repository, läuft lokal auf Port 3000. Das Widget nutzt davon nur `GET /token`:
 - Erfolg: `200` mit `{ "access_token": "…", "broadcaster_id": "…", "client_id": "…" }` und `Cache-Control: no-store`. Ältere Server-Stände liefern keine `client_id`.
 - Zugriffsschutz: `/token` antwortet nur auf Aufrufe vom selben Rechner über `localhost` oder `127.0.0.1`. Browser-Anfragen werden nur von erlaubten Herkünften angenommen, standardmäßig `http://absolute` (OBS-Browser-Source mit „Lokale Datei“) und `null` (Datei per `file://`). Andere Herkünfte erhalten `403`.
+- Einbindung in OBS: als URL `file:///…/SpargelPoll.html`, nicht als „Lokale Datei“. Neuere OBS-Versionen sperren Anfragen von `http://absolute` an `localhost`, bevor sie den Server erreichen.
 - Keine gespeicherten Tokens oder Refresh fehlgeschlagen: `401` mit `{ "error": "…", "hint": "…" }`.
 - Der Server erneuert den Twitch-Token selbst, sobald dieser weniger als 5 Minuten gültig ist. Vorher liefert er den gespeicherten Token unverändert. Fordert das Widget nach einem 401 einen neuen Token an, bekommt es deshalb unter Umständen denselben Token zurück (siehe `OFFEN.md`).
 

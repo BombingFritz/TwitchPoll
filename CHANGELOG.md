@@ -5,7 +5,9 @@ Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“
 
 ## [0.8.2] - 2026-11-01
 
-Braucht den Auth-Server-Stand mit `client_id` in `/token` (Twitch Companion JS server, Zugriffsschutz laut dessen ADR 0013). Im Headless-Browser gegen einen Test-Server und eine simulierte Twitch-API geprüft; noch nicht in OBS und nicht im Live-Stream erprobt.
+Braucht den Auth-Server-Stand mit `client_id` in `/token` (Twitch Companion JS server, Zugriffsschutz laut dessen ADR 0013). Im Headless-Browser gegen einen Test-Server und eine simulierte Twitch-API geprüft, in OBS per `file:///`-URL getestet; noch nicht im Live-Stream erprobt.
+
+**Wichtig:** In OBS nicht mehr „Lokale Datei“ verwenden, sondern die URL `file:///…/SpargelPoll.html`. Neuere OBS-Versionen sperren sonst den Zugriff auf den Auth-Server (siehe `docs/BUGS.md`).
 
 ### Changed
 - Client-ID und Broadcaster-ID kommen vom Auth-Server (`/token`). In `CONFIG` stehen keine IDs mehr; manuell eingetragene IDs haben weiterhin Vorrang.

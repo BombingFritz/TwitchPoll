@@ -25,8 +25,10 @@ Das Widget ist eine einzelne HTML-Datei (`SpargelPoll.html`) mit eingebettetem C
 ## Einrichtung
 
 1. Auth-Server starten.
-2. In OBS eine Browser-Source anlegen: „Lokale Datei“ → `SpargelPoll.html`, Breite 800, Höhe 600.
+2. In OBS eine Browser-Source anlegen, **„Lokale Datei“ nicht anhaken**, sondern als URL den Dateipfad mit `file:///` eintragen, z. B.
+   `file:///C:/Pfad/zu/SpargelPoll/SpargelPoll.html` (Leerzeichen als `%20`). Breite 800, Höhe 600.
    Im HTML muss nichts eingetragen werden: Token und IDs kommen vom Auth-Server.
+   Hintergrund: Neuere OBS-Versionen sperren Anfragen von Seiten, die über „Lokale Datei“ geladen werden (`http://absolute/…`), an `localhost`. Das Widget erreicht den Auth-Server dann nicht (siehe `docs/BUGS.md`).
 3. Beim Test im normalen Browser einmal in die Seite klicken, damit der Browser Audio freigibt.
 4. In der Server-Konsole erscheint beim ersten Abruf `[Token] Ausgabe an Widget-Herkunft: …`. Daran sieht man, dass das Widget den Server erreicht.
 

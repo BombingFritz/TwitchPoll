@@ -1,11 +1,15 @@
 # Offene Punkte
 
 ## Nach 0.8.2 zu prüfen
-1. **Live-Test in OBS:** Startet das Widget nach einem OBS-Neustart zuverlässig? In der Server-Konsole muss `[Token] Ausgabe an Widget-Herkunft: http://absolute` (oder `null`) erscheinen.
-2. **OBS-Pfad:** Browser-Source einmalig auf `SpargelPoll.html` umstellen. Seit 0.8.2 ist dafür keine Kopie mit echten IDs mehr nötig.
-3. **Herkunft `null` einschränken:** Zeigt der Live-Test, dass OBS nur `http://absolute` sendet, kann `null` aus den erlaubten Herkünften des Servers entfernt werden. `null` senden auch Seiten in abgeschotteten iframes; das ist der verbleibende kleine Angriffsweg.
-4. **„Local Network Access“ in neueren Chromium-Versionen:** Aktuelle Chromium-Versionen sperren Anfragen von unsicheren Seiten wie `http://absolute` an `localhost`, bevor sie den Server erreichen. Im Test mit Chromium 153 trat genau das auf. OBS nutzt eine ältere Chromium-Version (CEF); ein künftiges OBS-Update könnte diese Sperre mitbringen. Dann käme `/token` nicht mehr an, und das Widget bliebe bei „Auth-Server nicht erreichbar!“. Robuste Lösung: Widgets vom Auth-Server selbst ausliefern (`http://localhost:3000/…`), dann gilt die Sperre nicht. Diagnose: OBS mit `--remote-debugging-port=9222` starten und die Konsole der Browser-Source unter `http://localhost:9222` öffnen.
-5. **Token-Erneuerung bei 401:** Der Server erneuert den Token nur kurz vor Ablauf. Meldet das Widget einen 401, bekommt es deshalb unter Umständen denselben Token zurück (Server-Repository).
+1. **Live-Test im Stream:** In OBS per `file:///`-URL eingebunden läuft 0.8.2 (Test 01.11.2026). Ein Durchlauf mit echter Abstimmung, Endsequenz und Chat-Nachricht im Stream steht aus.
+2. **Andere Widgets:** Coinflip, Enigma usw. sind vermutlich ebenfalls betroffen, wenn sie als „Lokale Datei“ eingebunden sind, und sollten auf `file:///`-URLs umgestellt werden.
+3. **Option für später: Widgets vom Auth-Server ausliefern** (`http://localhost:3000/widgets/…`). Bewusst noch nicht umgesetzt. Abwägung:
+   - Vorteile: Seite und Server haben dieselbe Herkunft, damit greift keine Chromium-Sperre und CORS ist für Widgets unnötig. Die Herkünfte `null` und `http://absolute` könnten aus der Erlaubt-Liste entfallen. Der Server kann Caching der HTML-Dateien verhindern, sodass OBS immer die aktuelle Version lädt. Einheitliche Adressen für alle Widgets, später direkt aus dem Git-Klon.
+   - Nachteile: Ohne laufenden Server lädt OBS die Seite gar nicht, und die Start-Wiederholung im Widget hilft dann nicht. Nach einem Serverabsturz müssten die Quellen in OBS neu geladen werden. Der Server bekommt eine weitere Aufgabe (Dateien ausliefern, Widget-Ordner per `.env`, der nie der Server-Ordner sein darf). Jede Browser-Source muss umgestellt werden. Widgets und Server werden enger gekoppelt.
+   - Auslöser zum Umsetzen: Ein OBS-Update sperrt auch `file://`, oder die Restlücke durch die Herkunft `null` soll geschlossen werden.
+4. **`file:///`-URL als Dauerlösung:** Funktioniert ohne Strukturänderung und das Widget verbindet sich nach einem Server-Neustart selbst wieder. Nachteile: Der Server muss die Herkunft `null` erlauben, die auch abgeschottete iframes fremder Seiten senden (kleine Restlücke). Chromium schränkt `file://` schrittweise ein, ein OBS-Update kann das wieder brechen. Der Pfad wird von Hand eingetragen (keine Dateiauswahl, Leerzeichen als `%20`).
+5. **Diagnose bei Startproblemen:** Kommt in der Server-Konsole keine `/token`-Anfrage an, liegt es am Browser, nicht am Server. Genaue Fehlermeldung: OBS mit `--remote-debugging-port=9222` starten und die Konsole der Browser-Source unter `http://localhost:9222` öffnen (bei der Sperre: „more-private address space `loopback`“).
+6. **Token-Erneuerung bei 401:** Der Server erneuert den Token nur kurz vor Ablauf. Meldet das Widget einen 401, bekommt es deshalb unter Umständen denselben Token zurück (Server-Repository).
 
 ## Erledigt in 0.8.2
 - IDs vom Auth-Server: `/token` liefert `client_id` und `broadcaster_id`, im HTML stehen keine IDs mehr.
@@ -19,7 +23,7 @@
 ## Bekannte Implementierungsdetails
 - Der feste Ausblend-Delay und die optionsabhängigen Animations-Delays sind unterschiedlich. Das bestehende Timing ist akzeptiert; keine ungefragte Änderung.
 - Der Chat-Versand loggt Fehler, `is_sent=false` und den Nachrichtentext zum manuellen Posten. Wiederholt wird nur einmal nach Token-Erneuerung (401/403).
-- 0.8.1 und 0.8.2 sind noch nicht im Live-Stream erprobt.
+- 0.8.2 läuft in OBS (per `file:///`-URL); ein Live-Stream-Durchlauf steht aus.
 
 ## Geklärt
 - Benötigte Scopes sind im Auth-Server vorhanden.

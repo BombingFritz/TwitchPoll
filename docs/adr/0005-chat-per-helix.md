@@ -1,7 +1,7 @@
 # ADR: Chat-Ausgabe per Helix-API
 
 ## Status
-Angenommen; Nutzer bestätigt
+Angenommen; Nutzer bestätigt. Abgelöst durch [ADR 0009](0009-abstimmung-und-ergebniszeile-ueber-den-server.md) (0.9.0): Der Server sendet die Zeile beim Ende der Abstimmung; der Helix-Versand des Widgets bleibt nur als abschaltbarer Rückfall.
 
 ## Kontext
 Ergebnistext soll im Kanal-Chat erscheinen.

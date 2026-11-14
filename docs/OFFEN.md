@@ -3,7 +3,8 @@
 ## Versionsplan (Nutzer, 14.11.2026)
 0.8.2 ist der letzte stabile, veröffentlichte Stand; ein eigenes Release „1.0“ dafür entfällt.
 
-1. **0.9 – Anbindung an den Server:** Das Widget richtet sich nach dem aktuellen Server-Stand aus (Grundsatz „nur der Server fragt Twitch“, Server-ADR 0023/0024, Server-Issue `BombingFritz/Twitch-Companion-JS-server#50`). Auftrag folgt.
+1. **0.9 – Anbindung an den Server:** umgesetzt in 0.9.0 (ADR 0009, Issue #3); reale Abnahme offen (siehe Issue #3).
+   - **Später:** Das Widget holt beim Start weiter den Token über `/token`, braucht ihn aber nur noch für die Legacy-Wege. Ob es im Normalbetrieb ohne Token auskommen soll, hängt mit dem Widget-Schlüssel im Server zusammen (Server-Issue #57) [UNGEKLÄRT].
    - **Ziel im Zuge dieser Anbindung (später):** ein Debug-Modus für ausführlichere Tests, der sich über die Einstellungen des Servers (Webkonsole) an- und abschalten lässt. Vorbild: Debug-Modus des Wett-Widgets (`BombingFritz/TwitchPredictionWidget`, dort ADR 0004) und Testmodus der Intro-Topics im Server. Schnittstelle zum Server [UNGEKLÄRT].
 2. **0.9.5 – Vorschau-Werkzeug:** Demo-/Vorschauseite wie `demo.html` im Wett-Widget, um Design-Ideen ohne Server und Twitch zu erproben.
 3. **1.0 – Design-Update:** Animation und Grafik überarbeiten.

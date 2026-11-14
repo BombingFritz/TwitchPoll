@@ -1,6 +1,6 @@
 # Architektur
 ## Referenz und Struktur
-Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klassischem Script am Body-Ende; direkter Aufruf `init()`. Kein Framework, Paketmanager oder Build im Widget. Logo, `SPITZE_IMG` und `MITTE_IMG` sind drei eingebettete Base64-PNGs.
+Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klassischem Script am Body-Ende; direkter Aufruf `init()`. Kein Framework, Paketmanager oder Build im Widget. Ablauftest `test/widget-test.js` (Playwright, nur zum Testen; `package.json` mit `npm test`). Logo, `SPITZE_IMG` und `MITTE_IMG` sind drei eingebettete Base64-PNGs.
 
 800×600 px, transparenter Body, dunkler Widget-Hintergrund und grüner Rahmen. DOM: `widgetContainer`, `statusIndicator`, Header mit Logo/`pollQuestion`/`timerContainer`, Hauptbereich mit `winnerAnnouncement`, `pollArea`, Gras und `labelsArea`, darüber `pollEndedOverlay`.
 
@@ -9,17 +9,17 @@ Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klass
 |---|---|---|
 | Start/Auth | `init`, `fetchAccessToken`, `applyTokenResponse`, `isConfigured`, `getUserId`, `scheduleInitRetry` | Token und IDs vom Auth-Server übernehmen, Konfiguration prüfen, ggf. Benutzer-ID bestimmen, Polling starten; bei nicht erreichbarem Auth-Server Start später wiederholen |
 | Token-Erneuerung | `requestNewToken`, `refreshAccessToken`, `twitchFetchWithRefresh` | Bei HTTP 401/403 neuen Token holen und den Twitch-Aufruf einmal wiederholen |
-| Poll-Daten | `checkForActivePoll`, `handlePollFromAPI`, `updatePollFromAPI`, `getPollEndsAt` | API-Status übernehmen, aktive Poll aufbauen/aktualisieren, Endzeit bestimmen |
+| Poll-Daten | `checkForActivePoll`, `fetchCurrentPoll`, `fromServerPoll`, `toCurrentPoll`, `keepOrGiveUp`, `warnPollOnce`, `handlePollFromAPI`, `updatePollFromAPI`, `getPollEndsAt` | Stand vom Server holen (Rückfall Helix bei 404), in interne Form bringen, aktive Poll aufbauen/aktualisieren, Endzeit bestimmen; ohne gültigen Stand letzten Stand halten |
 | Timer | `startTimer`, `stopTimer`, `updateTimer` | Restsekunden anzeigen, Intervall 100 ms |
 | Ergebnis | `calculatePercentages`, `findWinner`, `triggerPollEnded` | Prozent, Gewinner-/Gleichstand-Erkennung und Endsequenz |
 | Darstellung | `renderPoll`, `updatePollValues` | Initialer Neuaufbau bzw. differenzielle Updates |
 | Sieger | `showWinnerAnnouncement`, `hideWinnerAnnouncement`, `triggerWinnerDecoration`, `resetWinnerDecoration` | Banner und Strahlenkranz |
 | Sound | `getSharedAudioContext`, `unlockAudioOnInteraction`, `playResultSound`, `triggerResultSound` | Wiederverwendeter Context, Freigabe, Synthese, Einmal-Guard |
-| Chat | `generateResultChatMessage`, `sendChatMessage` | Ergebnistext und Helix-Versand |
+| Chat | `generateResultChatMessage`, `sendChatMessage` | Ergebnistext loggen; Helix-Versand nur mit `WIDGET_CHAT_MESSAGE` (Legacy-Rückfall, ADR 0009) |
 | Sichtbarkeit | `showWidget`, `hideWhenNoPoll`, `showNoPoll`, `updateStatus` | Widget-/Leerzustand und Statuspunkt |
 
 ## Datenhaltung
-Nur flüchtiger JS-Zustand: `currentPoll`, `currentPollId`, `timerInterval`, `pollCheckInterval`, `pollEndTime`, `pollEndedInProgress`, `resultSoundPlayed`, `sharedAudioCtx`, `tokenRefreshPromise`, `lastTokenRefreshAttempt`, `initRetryCount`, `initRetryTimer`. Kein Widget-Dateispeicher oder persistenter Poll-Verlauf.
+Nur flüchtiger JS-Zustand: `currentPoll`, `currentPollId`, `timerInterval`, `pollCheckInterval`, `pollEndTime`, `pollEndedInProgress`, `resultSoundPlayed`, `sharedAudioCtx`, `tokenRefreshPromise`, `lastTokenRefreshAttempt`, `initRetryCount`, `initRetryTimer`, `pollSource` (`server` oder nach 404 `helix`), `lastPollWarning`. Kein Widget-Dateispeicher oder persistenter Poll-Verlauf.
 Poll-Modell: `{id, question, options: [{id, name, votes}], ended}`; Prozentfelder werden berechnet.
 
 ## Datenfluss und Zeitverhalten
@@ -28,10 +28,13 @@ Poll-Modell: `{id, question, options: [{id, name, votes}], ended}`; Prozentfelde
 - Fehlt danach die Client-ID (alter Auth-Server ohne `client_id`), bricht der Start mit „Konfiguration fehlt!“ ab. Fehlt nur die Broadcaster-ID, wird sie über `GET /helix/users` aus dem Token ermittelt.
 - Schlägt der Token-Abruf fehl, zeigt das Widget „Auth-Server nicht erreichbar!“ und plant über `scheduleInitRetry` einen neuen `init`-Versuch nach 10 s, 30 s und danach alle 60 s. Nach erfolgreichem Start wird der Zähler zurückgesetzt und „Warte auf Abstimmung...“ angezeigt.
 - Poll-Abfrage und Chat-Versand laufen über `twitchFetchWithRefresh`: Bei HTTP 401/403 wird über `refreshAccessToken` ein neuer Token vom Auth-Server geholt und der Aufruf genau einmal wiederholt. Parallele Erneuerungen teilen sich einen Request; zwischen zwei Erneuerungen liegen mindestens 30 s. Hat ein paralleler Aufruf den Token schon erneuert, wird nur wiederholt. `getUserId` nutzt diesen Weg nicht.
-- `checkForActivePoll` verwendet den ersten zurückgegebenen Poll. Neue aktive ID: `handlePollFromAPI`, initiales Rendering, Timer, aktives Intervall. Bekannte aktive Poll: `updatePollFromAPI` → `updatePollValues`.
-- Endstatus `COMPLETED`, `TERMINATED`, `ARCHIVED` einer angezeigten Poll startet `triggerPollEnded`; `pollEndedInProgress` verhindert Wiederholung.
+- `checkForActivePoll` holt über `fetchCurrentPoll` den Stand vom Server (`GET /api/twitch/poll/current`, `cache: 'no-store'`, ADR 0009). `fromServerPoll` bringt ihn in die interne Form (wie Helix: `id`, `title`, `status`, `choices[{id, title, votes}]`, `ends_at`); unbekannte Felder werden ignoriert, ohne `pollId` oder `choices` ist der Stand ungültig. `toCurrentPoll` ist die einzige Abbildung auf `currentPoll`.
+- Antwortet der Server mit 404 (älterer Stand), setzt das Widget `pollSource = 'helix'` und fragt bis zum Neuladen selbst `GET /helix/polls` (Legacy-Rückfall, erster Poll der Antwort).
+- Neue aktive ID: `handlePollFromAPI`, initiales Rendering, Timer, aktives Intervall. Bekannte aktive Poll: `updatePollFromAPI` → `updatePollValues`.
+- Endstatus `COMPLETED`, `TERMINATED`, `ARCHIVED` einer angezeigten Poll startet `triggerPollEnded`; `pollEndedInProgress` verhindert Wiederholung. Ein `ARCHIVED` nach `COMPLETED` derselben Abstimmung trifft entweder die laufende Endsequenz oder ein leeres Widget und löst nichts aus.
+- Kein gültiger Stand (Netzwerkfehler, HTTP-Fehler außer 404, ungültige Antwort) oder `WAITING`, während eine Abstimmung angezeigt wird: Der letzte Stand bleibt, die Warnung erscheint einmal, der Statuspunkt wird rot. `keepOrGiveUp` blendet erst aus, wenn die Zeit der Abstimmung seit `STALE_GRACE_MS` abgelaufen ist, ohne Endsequenz. Ohne angezeigte Abstimmung führt `WAITING` zum Ausblenden. Nach jeder erfolgreichen Abfrage ist der Statuspunkt grün.
 - Endsequenz: Polling/Timer stoppen → Endwerte übernehmen → Ende-Overlay 3000 ms.
-- Bei Overlay-Ende: Sound-Flag zurücksetzen, Text erzeugen/loggen und asynchron senden (nicht awaited), danach `renderPoll(currentPoll, true)`.
+- Bei Overlay-Ende: Sound-Flag zurücksetzen, Text erzeugen und loggen, danach `renderPoll(currentPoll, true)`. Gesendet wird die Zeile vom Server beim Ende der Abstimmung; das Widget sendet nur mit `WIDGET_CHAT_MESSAGE: true`, dann asynchron (nicht awaited) per Helix.
 - Initialer Aufbau: Option um `index*200` ms versetzt; Mittelteile je 75 ms, Opacity-Transition 0,12 s.
 - Sieger-/Gleichstand-Timeout je Option: `numSections*75+300` ms nach Optionsaufbau. Im Siegerfall Strahlenkranz und Banner, im Gleichstand Banner; dort auch `triggerResultSound`.
 - Separater Ausblendpfad: nach `10*75+300` ms plus `RESULT_DISPLAY_DURATION` wird zurückgesetzt und Idle-Polling gestartet. Dieser feste Delay ist nicht identisch mit jedem optionsabhängigen Siegesanimationszeitpunkt.
@@ -50,13 +53,14 @@ Chat: Normalfall nennt Sieger und, wenn vorhanden, Zweitplatzierten, sortiert na
 | Ziel | Aufruf | Daten |
 |---|---|---|
 | Lokaler Auth-Server | `GET http://localhost:3000/token` | JSON-Felder `access_token`, `client_id`, `broadcaster_id` (Stand der Anbindung: Abschnitt „Integration mit dem Server“) |
-| Twitch | `GET https://api.twitch.tv/helix/users` | Benutzer-ID, nur bei passendem Konfigurationsplatzhalter |
-| Twitch | `GET https://api.twitch.tv/helix/polls?broadcaster_id=…` | Polls/Status/Choices/Stimmen |
-| Twitch | `POST https://api.twitch.tv/helix/chat/messages` | `broadcaster_id`, `sender_id` (beide Broadcaster-ID), `message` |
-Twitch-Header: `Authorization: Bearer <ACCESS_TOKEN>`, `Client-Id: <CLIENT_ID>`; Chat zusätzlich JSON-Content-Type. Benötigte Scopes: `channel:read:polls` (oder `channel:manage:polls`) und `user:write:chat`.
+| Lokaler Auth-Server | `GET http://localhost:3000/api/twitch/poll/current` | `{status: 'WAITING'}` oder `pollId`, `title`, `status`, `choices[{id, title, votes, …}]`, `endsAt`, `startedAt`, `duration`, weitere Felder (Server-Spec) |
+| Twitch (Legacy) | `GET https://api.twitch.tv/helix/users` | Benutzer-ID, nur bei passendem Konfigurationsplatzhalter |
+| Twitch (Legacy) | `GET https://api.twitch.tv/helix/polls?broadcaster_id=…` | nur nach 404 vom Server |
+| Twitch (Legacy) | `POST https://api.twitch.tv/helix/chat/messages` | nur mit `WIDGET_CHAT_MESSAGE: true`; `broadcaster_id`, `sender_id` (beide Broadcaster-ID), `message` |
+Twitch-Header: `Authorization: Bearer <ACCESS_TOKEN>`, `Client-Id: <CLIENT_ID>`; Chat zusätzlich JSON-Content-Type. Scopes nur für die Legacy-Wege: `channel:read:polls` (oder `channel:manage:polls`) und `user:write:chat`.
 
 ## Auth-Server
-Separates Projekt mit eigenem Repository, läuft lokal auf Port 3000. Das Widget nutzt davon nur `GET /token`:
+Separates Projekt mit eigenem Repository, läuft lokal auf Port 3000. Das Widget nutzt `GET /token` und `GET /api/twitch/poll/current` (Abschnitt „Integration mit dem Server“). Zu `/token`:
 - Erfolg: `200` mit `{ "access_token": "…", "broadcaster_id": "…", "client_id": "…" }` und `Cache-Control: no-store`. Ältere Server-Stände liefern keine `client_id`.
 - Zugriffsschutz: `/token` antwortet nur auf Aufrufe vom selben Rechner über `localhost` oder `127.0.0.1`. Browser-Anfragen werden nur von erlaubten Herkünften angenommen, standardmäßig `http://absolute` (OBS-Browser-Source mit „Lokale Datei“) und `null` (Datei per `file://`). Andere Herkünfte erhalten `403`.
 - Einbindung in OBS: als URL `file:///…/SpargelPoll.html`, nicht als „Lokale Datei“. Neuere OBS-Versionen sperren Anfragen von `http://absolute` an `localhost`, bevor sie den Server erreichen.
@@ -70,10 +74,10 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 |---|---|
 | Verträge | `/token`: Server-ADR 0013 und 0024, Endpunkttabelle in dessen `docs/ARCHITEKTUR.md`. Abstimmung und Ergebniszeile: Server-Spec [`docs/specs/wetten-abstimmungen.md`](https://github.com/BombingFritz/Twitch-Companion-JS-server/blob/main/docs/specs/wetten-abstimmungen.md), Schritte 2 und 3 |
 | Zuletzt geprüfter Serverstand | `main` bei `ebbb62b` (14.11.2026), Code und Doku gelesen, nicht ausgeführt. Kein Server-Release enthält die neuen Endpunkte (letzte Version 1.1.5) |
-| Genutzt (0.8.2) | `GET /token`: `access_token`, `client_id`, `broadcaster_id` |
-| Auf dem Server verfügbar, im Widget noch nicht genutzt | `GET /api/twitch/poll/current` (letzter Stand der Abstimmung aus EventSub, ohne Stand `{status: 'WAITING'}`); Ergebniszeile der Abstimmung über den Server, Schalter `results poll on\|off`, Vorgabe aus |
-| Legacy-Ausnahmen (direkt an Twitch, Übergang nach Server-Issue [#50](https://github.com/BombingFritz/Twitch-Companion-JS-server/issues/50)) | `GET /helix/polls` alle 2 s bzw. 5 s; `POST /helix/chat/messages` einmal je Abstimmung; `GET /helix/users` nur ohne `broadcaster_id`. Migration geplant für 0.9 (`OFFEN.md`) |
-| Integrations-Teststatus | `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026; Serverstand dabei nicht festgehalten). Server-Endpunkte für Abstimmung und Ergebniszeile: im Widget weder gegen Attrappen noch real getestet |
+| Genutzt (0.9.0) | `GET /token` (`access_token`, `client_id`, `broadcaster_id`; nur noch für Start und Legacy-Wege nötig); `GET /api/twitch/poll/current` im bisherigen Takt (ADR 0009). Ergebniszeile sendet der Server (Schalter `results poll on\|off`, Vorgabe aus; einschalten, sobald 0.9.0 in OBS läuft) |
+| Legacy-Ausnahmen (direkt an Twitch, Übergang nach Server-Issue [#50](https://github.com/BombingFritz/Twitch-Companion-JS-server/issues/50)) | `GET /helix/polls` nur nach 404 vom Server (älterer Stand), bis zum Neuladen; `POST /helix/chat/messages` nur mit `WIDGET_CHAT_MESSAGE: true` (Vorgabe aus); `GET /helix/users` nur ohne `broadcaster_id` |
+| Laufender Server des Nutzers | `main` ab `ebbb62b` laut Nutzer (14.11.2026), nicht selbst geprüft |
+| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium, 48 Prüfungen, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
 
 ## Konfiguration
 | Konstante | Wert | Bedeutung |
@@ -82,6 +86,9 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 | `ACCESS_TOKEN` | `''` | zur Laufzeit vom Auth-Server gesetzt |
 | `BROADCASTER_ID` | `''` | Kanal und Chat-Absender; wird vom Auth-Server gesetzt, manueller Eintrag hat Vorrang |
 | `TOKEN_ENDPOINT` | `http://localhost:3000/token` | Tokenquelle |
+| `POLL_ENDPOINT` | `http://localhost:3000/api/twitch/poll/current` | Stand der Abstimmung vom Server (ADR 0009) |
+| `WIDGET_CHAT_MESSAGE` | `false` | `true`: Widget sendet die Ergebniszeile selbst per Helix; nur für Server ohne Ergebniszeilen, nie zusammen mit `results poll on` |
+| `STALE_GRACE_MS` | `30000` | ohne gültigen Stand so lange nach Ablauf der Zeit warten, dann ohne Endsequenz ausblenden |
 | `AUTO_HIDE` | `true` | ohne Poll ausblenden |
 | `ENDED_OVERLAY_DURATION` | `3000` | Overlay-Dauer in ms |
 | `RESULT_DISPLAY_DURATION` | `7000` | Ergebnisdauer im festen Ausblendpfad in ms |
@@ -94,4 +101,4 @@ Seit 0.8.2 stehen im HTML keine IDs mehr; sie kommen vom Auth-Server. Echte IDs 
 `WIDGET_VERSION` (Konstante nach `CONFIG`) wird beim Start geloggt, um prüfen zu können, welche Version OBS geladen hat. Bei jeder neuen Version anpassen.
 
 ## Abhängigkeiten und andere Systeme
-Browser/OBS, `fetch`, Web Audio API, Twitch Helix und separater lokaler Auth-Server. Kein TTF-/TTS-Modul im Widget. `vc-init` ist eine Body-Klasse ohne passende eigene CSS-/JS-Verwendung im untersuchten Widget; ihre Herkunft ist unbekannt.
+Browser/OBS, `fetch`, Web Audio API, separater lokaler Auth-Server, Twitch Helix nur noch für die Legacy-Wege. Kein TTF-/TTS-Modul im Widget. `vc-init` ist eine Body-Klasse ohne passende eigene CSS-/JS-Verwendung im untersuchten Widget; ihre Herkunft ist unbekannt.

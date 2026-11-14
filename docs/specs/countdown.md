@@ -4,7 +4,7 @@
 Restzeit anzeigen.
 
 ## Verhalten
-getPollEndsAt nutzt ends_at, falls vorhanden, sonst started_at plus duration. Timer aktualisiert alle 100 ms und stoppt bei Poll-Ende.
+getPollEndsAt nutzt ends_at (vom Server: `endsAt`), falls vorhanden, sonst started_at plus duration (nur noch im Helix-Rückfall). Timer aktualisiert alle 100 ms und stoppt bei Poll-Ende.
 
 ## Nicht-Ziele
 Unbeauftragten kritischen Puls-Timer ergänzen.

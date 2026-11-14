@@ -47,15 +47,16 @@ Unabhängige Arbeit (Layout, Demo, lokale Aufräumarbeiten) läuft im vereinbart
 - Versionen nur über `CHANGELOG.md` und Git-Tags (`vX.Y.Z`), nie über den Dateinamen. `WIDGET_VERSION` bei jeder neuen Version zusammen mit `CHANGELOG.md` anpassen. Reine Regel- oder Doku-Änderungen bekommen keine Funktionsversion.
 - IDs und Token kommen vom Server; im Repository nie echte IDs oder Tokens. Keine Secrets ausgeben.
 - Nur beauftragte, gezielte Änderungen. Timer, Layout, API-Anbindung und Animation ohne Auftrag unverändert lassen.
-- Poll-Daten per REST; kein ungefragtes EventSub, IRC oder Stechen (ADR 0002, ADR 0006).
-  - Legacy-Ausnahme: REST geht heute direkt an Twitch Helix (`GET /helix/polls`). Umstellung auf den Server nur mit Auftrag (geplant 0.9, siehe ARCHITEKTUR).
+- Poll-Daten per REST vom Server (`GET /api/twitch/poll/current`, ADR 0009); kein ungefragtes EventSub, IRC oder Stechen (ADR 0006).
+  - Legacy-Ausnahme: Nur wenn der Server die Adresse nicht kennt (404), fragt das Widget `GET /helix/polls` selbst.
 - Visuelles und textliches Ergebnis nutzen `findWinner()` und `calculatePercentages()`; null Stimmen für alle Optionen gelten als Gleichstand (ADR 0003).
 - Sound per Web Audio, einmal je Poll-Ende (ADR 0004).
-- Ergebnisnachricht ausschließlich per Helix-API; Versandzeitpunkt (Overlay-Ende) bleibt (ADR 0005).
-  - Legacy-Ausnahme: Der Server kann die Zeile inzwischen selbst senden. Umstellung nur mit Auftrag (geplant 0.9).
+- Die Ergebnisnachricht sendet der Server beim Ende der Abstimmung (ADR 0009, Zeitpunkt vom Nutzer bestätigt am 14.11.2026); das Widget sendet nur als Legacy-Rückfall (`WIDGET_CHAT_MESSAGE`, Vorgabe aus), dann bei Overlay-Ende. Nie beide Wege gleichzeitig.
+- Der Text der Ergebnisnachricht steht in `docs/specs/chat-nachricht.md`; der Server übernimmt ihn wörtlich. Änderungen am Text nur mit Auftrag und dann als Serveranforderung.
 
 ## Pflichtchecks vor Auslieferung
 - Script extrahieren und mit einem echten JS-Parser prüfen (`node --check`); Klammerzählen reicht nicht.
+- `npm test` (`test/widget-test.js`, Headless-Chromium, Server und Twitch nachgebildet): Ergebnis `0 FAIL`. Neue Funktionen bekommen dort eigene Prüfungen.
 - Vollständigkeit: HTML-Body, Script, alle Funktionsdefinitionen und `init();` vorhanden.
 - Diff zur tatsächlichen Ausgangsdatei prüfen; unerwartete Änderungen ausschließen.
 - Alle drei eingebetteten PNGs bytegleich erhalten; Hashes vergleichen.

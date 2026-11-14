@@ -49,7 +49,7 @@ Chat: Normalfall nennt Sieger und, wenn vorhanden, Zweitplatzierten, sortiert na
 ## Schnittstellen
 | Ziel | Aufruf | Daten |
 |---|---|---|
-| Lokaler Auth-Server | `GET http://localhost:3000/token` | JSON-Felder `access_token`, `client_id`, `broadcaster_id` |
+| Lokaler Auth-Server | `GET http://localhost:3000/token` | JSON-Felder `access_token`, `client_id`, `broadcaster_id` (Stand der Anbindung: Abschnitt „Integration mit dem Server“) |
 | Twitch | `GET https://api.twitch.tv/helix/users` | Benutzer-ID, nur bei passendem Konfigurationsplatzhalter |
 | Twitch | `GET https://api.twitch.tv/helix/polls?broadcaster_id=…` | Polls/Status/Choices/Stimmen |
 | Twitch | `POST https://api.twitch.tv/helix/chat/messages` | `broadcaster_id`, `sender_id` (beide Broadcaster-ID), `message` |
@@ -61,7 +61,19 @@ Separates Projekt mit eigenem Repository, läuft lokal auf Port 3000. Das Widget
 - Zugriffsschutz: `/token` antwortet nur auf Aufrufe vom selben Rechner über `localhost` oder `127.0.0.1`. Browser-Anfragen werden nur von erlaubten Herkünften angenommen, standardmäßig `http://absolute` (OBS-Browser-Source mit „Lokale Datei“) und `null` (Datei per `file://`). Andere Herkünfte erhalten `403`.
 - Einbindung in OBS: als URL `file:///…/SpargelPoll.html`, nicht als „Lokale Datei“. Neuere OBS-Versionen sperren Anfragen von `http://absolute` an `localhost`, bevor sie den Server erreichen.
 - Keine gespeicherten Tokens oder Refresh fehlgeschlagen: `401` mit `{ "error": "…", "hint": "…" }`.
-- Der Server erneuert den Twitch-Token selbst, sobald dieser weniger als 5 Minuten gültig ist. Vorher liefert er den gespeicherten Token unverändert. Fordert das Widget nach einem 401 einen neuen Token an, bekommt es deshalb unter Umständen denselben Token zurück (siehe `OFFEN.md`).
+- Token-Erneuerung: Seit Server-ADR 0024 (auf Server-`main`) erneuert der Server den Token von sich aus 10 min vor Ablauf und liefert in `/token` zusätzlich `expires_at`; das Widget nutzt `expires_at` nicht. Früher erneuerte der Server erst kurz vor Ablauf, ein Widget bekam nach einem 401 dann unter Umständen denselben Token zurück.
+
+## Integration mit dem Server
+Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFritz/Twitch-Companion-JS-server), eigenes Repository mit eigener Lizenz. Dieses Repository ändert dort nichts; Bedarf geht als Issue an den Server (siehe `AGENTS.md`).
+
+| Punkt | Stand |
+|---|---|
+| Verträge | `/token`: Server-ADR 0013 und 0024, Endpunkttabelle in dessen `docs/ARCHITEKTUR.md`. Abstimmung und Ergebniszeile: Server-Spec [`docs/specs/wetten-abstimmungen.md`](https://github.com/BombingFritz/Twitch-Companion-JS-server/blob/main/docs/specs/wetten-abstimmungen.md), Schritte 2 und 3 |
+| Zuletzt geprüfter Serverstand | `main` bei `ebbb62b` (14.11.2026), Code und Doku gelesen, nicht ausgeführt. Kein Server-Release enthält die neuen Endpunkte (letzte Version 1.1.5) |
+| Genutzt (0.8.2) | `GET /token`: `access_token`, `client_id`, `broadcaster_id` |
+| Auf dem Server verfügbar, im Widget noch nicht genutzt | `GET /api/twitch/poll/current` (letzter Stand der Abstimmung aus EventSub, ohne Stand `{status: 'WAITING'}`); Ergebniszeile der Abstimmung über den Server, Schalter `results poll on\|off`, Vorgabe aus |
+| Legacy-Ausnahmen (direkt an Twitch, Übergang nach Server-Issue [#50](https://github.com/BombingFritz/Twitch-Companion-JS-server/issues/50)) | `GET /helix/polls` alle 2 s bzw. 5 s; `POST /helix/chat/messages` einmal je Abstimmung; `GET /helix/users` nur ohne `broadcaster_id`. Migration geplant für 0.9 (`OFFEN.md`) |
+| Integrations-Teststatus | `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026; Serverstand dabei nicht festgehalten). Server-Endpunkte für Abstimmung und Ergebniszeile: im Widget weder gegen Attrappen noch real getestet |
 
 ## Konfiguration
 | Konstante | Wert | Bedeutung |

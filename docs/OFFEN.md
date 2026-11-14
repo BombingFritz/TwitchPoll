@@ -26,7 +26,7 @@ Noch nicht in OBS geprüft; Impact fehlte im Testsystem.
    - Auslöser zum Umsetzen: Ein OBS-Update sperrt auch `file://`, oder die Restlücke durch die Herkunft `null` soll geschlossen werden.
 4. **`file:///`-URL als Dauerlösung:** Funktioniert ohne Strukturänderung und das Widget verbindet sich nach einem Server-Neustart selbst wieder. Nachteile: Der Server muss die Herkunft `null` erlauben, die auch abgeschottete iframes fremder Seiten senden (kleine Restlücke). Chromium schränkt `file://` schrittweise ein, ein OBS-Update kann das wieder brechen. Der Pfad wird von Hand eingetragen (keine Dateiauswahl, Leerzeichen als `%20`).
 5. **Diagnose bei Startproblemen:** Kommt in der Server-Konsole keine `/token`-Anfrage an, liegt es am Browser, nicht am Server. Genaue Fehlermeldung: OBS mit `--remote-debugging-port=9222` starten und die Konsole der Browser-Source unter `http://localhost:9222` öffnen (bei der Sperre: „more-private address space `loopback`“).
-6. **Token-Erneuerung bei 401:** Der Server erneuert den Token nur kurz vor Ablauf. Meldet das Widget einen 401, bekommt es deshalb unter Umständen denselben Token zurück (Server-Repository).
+6. **Token-Erneuerung bei 401:** überholt durch Server-ADR 0024 (Server erneuert 10 min vor Ablauf, `/token` mit `expires_at`); siehe ARCHITEKTUR, Abschnitt „Auth-Server“.
 
 ## Erledigt in 0.8.2
 - IDs vom Auth-Server: `/token` liefert `client_id` und `broadcaster_id`, im HTML stehen keine IDs mehr.

@@ -3,6 +3,14 @@
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [Semantic Versioning](https://semver.org/lang/de/).
 Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“) sind nicht mehr zuverlässig zuordenbar und erhalten keine nachträglichen Versionsnummern.
 
+## [Unreleased]
+
+### Dokumentiert
+- Arbeitsregeln für die Zusammenarbeit mit dem Server: Schreibgrenze (Server-Repository nur lesen, Bedarf als Issue), Umgang mit Serverbedarf und Blockern, Freigabe zur Integration (`AGENTS.md`). `CLAUDE.md` bindet `AGENTS.md` ein.
+- Abschnitt „Integration mit dem Server“ in `docs/ARCHITEKTUR.md` mit Verträgen, geprüftem Serverstand, Legacy-Ausnahmen und Teststatus.
+- Vorlagen für Pull Requests und Integrations-Issues unter `.github/`.
+- Live-Test von 0.8.2 im Stream bestätigt; Versionsplan 0.9, 0.9.5, 1.0 in `docs/OFFEN.md`.
+
 ## [0.8.2] - 2026-11-01
 
 Braucht den Auth-Server-Stand mit `client_id` in `/token` (Twitch Companion JS server, Zugriffsschutz laut dessen ADR 0013). Im Headless-Browser gegen einen Test-Server und eine simulierte Twitch-API geprüft, in OBS per `file:///`-URL getestet; noch nicht im Live-Stream erprobt.

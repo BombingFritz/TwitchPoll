@@ -11,6 +11,7 @@ Neue Statusüberwachung ergänzen.
 
 ## Akzeptanzkriterien
 - Bei AUTO_HIDE=true blendet das Widget ohne aktive Poll aus.
+- Bei AUTO_HIDE=false (auch `?demo=…&always=1`) ist das Widget dauerhaft sichtbar, ohne Abstimmung mit „Keine aktive Abstimmung“.
 - Bei aktiver Poll wird das Widget sichtbar.
 - Ein Chat-Fehler beendet die visuelle Endsequenz nicht.
 

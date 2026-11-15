@@ -34,7 +34,7 @@ function helixPoll(o) {
   };
 }
 
-async function open(browser, state) {
+async function open(browser, state, query) {
   const ctx = await browser.newContext({ viewport: { width: 800, height: 600 } });
   const page = await ctx.newPage();
   state.tokenCalls = 0; state.serverCalls = 0; state.helixCalls = 0; state.chat = []; state.console = [];
@@ -62,7 +62,7 @@ async function open(browser, state) {
     route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify({ data: [{ message_id: 'm1', is_sent: true }] }) });
   });
   await page.route('https://api.twitch.tv/helix/users**', route => route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: '{"data":[{"id":"123"}]}' }));
-  await page.goto(FILE);
+  await page.goto(FILE + (query || ''));
   // Zähler für Endsequenzen (Overlay) und Sound; Sound selbst wird nicht abgespielt
   await page.evaluate(() => {
     window.__overlays = 0; window.__sounds = 0;
@@ -267,6 +267,60 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     ok((await counts(p1)).overlays === 1 && (await counts(p2)).overlays === 1, 'Zwei Instanzen: je eine Endsequenz');
     ok(st1.chat.length + st2.chat.length === 0, 'Zwei Instanzen: keine Chat-Zeile vom Widget');
     await p1.context().close(); await p2.context().close();
+  }
+
+  // 11) Demo-Modus (0.9.5): ohne Server, Twitch und Chat; Ablauf wie im Stream
+  {
+    const st = {};
+    const page = await open(browser, st, '?demo=zwei');
+    await advance(page, 2000);
+    ok(!(await visible(page)), 'Demo: vor dem Start unsichtbar');
+    await advance(page, 6000);
+    ok(await visible(page), 'Demo: Abstimmung sichtbar');
+    ok((await text(page, '#pollQuestion')) === 'Tauchen oder auftauchen?', 'Demo: Beispiel „zwei“');
+    await advance(page, 42000);
+    ok((await counts(page)).overlays === 1, 'Demo: Endsequenz');
+    await advance(page, 30000);
+    const c = await counts(page);
+    ok(c.overlays === 1 && c.sounds === 1, 'Demo: ARCHIVED ohne zweite Endsequenz, Ton einmal');
+    ok(!(await visible(page)), 'Demo: danach ausgeblendet');
+    ok(st.tokenCalls === 0 && st.serverCalls === 0 && st.helixCalls === 0 && st.chat.length === 0, 'Demo: keine Anfrage an Server oder Twitch, kein Chat');
+    ok(!st.console.some(l => l.startsWith('PAGEERROR')), 'Demo: keine Skriptfehler');
+    await page.context().close();
+  }
+
+  // 12) Demo „null“ mit always=1: dauerhaft sichtbar (AUTO_HIDE aus), 0:0 als Gleichstand; Abbruch-Beispiel endet früher
+  {
+    const st = {};
+    const page = await open(browser, st, '?demo=null&always=1');
+    await advance(page, 1000);
+    ok(await visible(page), 'always=1: ohne Abstimmung sichtbar (AUTO_HIDE aus)');
+    await advance(page, 55000);
+    ok((await text(page, '#winnerAnnouncement')).includes('Gleichstand'), 'Demo 0:0: Gleichstand-Banner');
+    await advance(page, 10000);
+    ok(await visible(page), 'always=1: nach der Endsequenz weiter sichtbar');
+    await page.context().close();
+    const st2 = {};
+    const p2 = await open(browser, st2, '?demo=abbruch');
+    await advance(p2, 32000);
+    ok((await counts(p2)).overlays === 1, 'Demo Abbruch: Endsequenz nach 27 s Laufzeit');
+    await p2.context().close();
+  }
+
+  // 13) demo.html: lädt ohne Fehler und ohne Anfragen nach außen
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const errs = [], ext = [];
+    page.on('pageerror', e => errs.push(e.message));
+    page.on('request', r => { if (!r.url().startsWith('file:')) ext.push(r.url()); });
+    await page.goto('file://' + path.resolve(__dirname, '..', 'demo.html'));
+    await sleep(1500);
+    ok(errs.length === 0, 'demo.html: keine Skriptfehler');
+    ok(ext.length === 0, 'demo.html: keine Anfragen nach außen');
+    ok((await page.frameLocator('#frameA').locator('#widgetContainer').count()) === 1, 'demo.html: Widget eingebunden');
+    ok(await page.evaluate(() => getComputedStyle(document.getElementById('boxB')).display === 'none'), 'demo.html: ohne Entwurf nur ein Widget');
+    await ctx.close();
   }
 
   await browser.close();

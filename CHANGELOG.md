@@ -5,6 +5,17 @@ Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-11-15
+
+Vorschau-Werkzeug für das Design-Update (Versionsplan in `docs/OFFEN.md`). Geprüft mit `npm test` (64 Prüfungen, 0 FAIL) und Screenshots von `demo.html` im Headless-Chromium; nicht in OBS.
+
+### Added
+- Demo-Modus im Widget: `SpargelPoll.html?demo=1` (reihum) oder `?demo=zwei|vier|fuenf|gleich|null|hundert|abbruch`, dazu `&always=1`. Synthetische Abstimmungen ohne Auth-Server, ohne Twitch und ohne Chat (Spec `demo.md`).
+- `demo.html`: Vorführ- und Vergleichsseite mit Beispielen, Anzeige wie im Stream oder dauerhaft, Hintergründen (Spielszene, hell, Transparenz, Grün), Zeitleiste und einem Entwurf zum Vergleich nebeneinander.
+
+### Fixed
+- Mit `AUTO_HIDE: false` blieb das Widget unsichtbar; jetzt ist es dauerhaft sichtbar.
+
 ## [0.9.0] - 2026-11-14
 
 Umstellung auf die Server-Endpunkte (Server-Grundsatz „nur der Server fragt Twitch“, dort ADR 0023, Issue #50; hier ADR 0009, Issue #3). Braucht Server-`main` ab `ebbb62b`. Geprüft mit `npm test` (48 Prüfungen, 0 FAIL) gegen nachgebildeten Server und Twitch; nicht gegen den echten Server, nicht in OBS.

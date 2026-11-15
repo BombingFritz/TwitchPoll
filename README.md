@@ -16,6 +16,14 @@ Das Widget ist eine einzelne HTML-Datei (`SpargelPoll.html`) mit eingebettetem C
 - Ergebnisnachricht im Chat („Den längsten Spargel hat …“ bzw. Gleichstand), gesendet vom Server beim Ende der Umfrage.
 - Blendet sich ohne aktive Umfrage automatisch aus.
 
+## Demo und Design-Vergleich
+
+`demo.html` im Browser öffnen: Das echte Widget läuft mit erfundenen Abstimmungen, ohne Auth-Server, ohne Twitch und ohne Chat. Beispiele: zwei Optionen mit Führungswechsel, vier Optionen, fünf mit langen Namen, Gleichstand, 0:0, 100 % und Abbruch, einzeln oder reihum. Dazu Anzeige wie im Stream oder dauerhaft, verschiedene Hintergründe und eine Zeitleiste.
+
+Für Design-Entwürfe eine Kopie von `SpargelPoll.html` anlegen und ändern, z. B. `entwuerfe/SpargelPoll-b.html`, und den Pfad in `demo.html` unter „Entwurf zum Vergleich“ eintragen. Beide Fassungen laufen dann nebeneinander mit derselben Abstimmung.
+
+Direkt im Widget: `SpargelPoll.html?demo=1` (reihum) oder `?demo=zwei|vier|fuenf|gleich|null|hundert|abbruch`, mit `&always=1` dauerhaft sichtbar. Damit lässt sich die Quelle in OBS auch ohne echte Abstimmung platzieren; danach die Parameter wieder entfernen.
+
 ## Voraussetzungen
 
 - OBS (Browser-Source) oder ein aktueller Browser.

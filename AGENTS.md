@@ -42,7 +42,7 @@ Unabhängige Arbeit (Layout, Demo, lokale Aufräumarbeiten) läuft im vereinbart
 - Integration in einem eigenen PR. Nur das eigene Integrations-Issue nach erfüllten Kriterien schließen; Server-Issues nur referenzieren, nie mit `Closes`/`Fixes`. Ein Doku-Link allein beweist keine Umsetzung.
 
 ## Schutzregeln des Widgets
-- Referenz ist `SpargelPoll.html` im aktuellen Stand von `main`.
+- Referenz ist `SpargelPoll.html` im aktuellen Stand von `main`. `demo.html` bindet sie im Demo-Modus ein; ihre Zeitleiste muss zu `DEMO_*` im Widget passen (Spec `demo.md`). Der Demo-Modus fragt weder Server noch Twitch und sendet nichts.
 - Bestehende Struktur erhalten: eine HTML-Datei, Inline-CSS/JS, drei eingebettete PNGs (ADR 0001). Kein Neuaufbau der Datei aus Suchsnippets.
 - Versionen nur über `CHANGELOG.md` und Git-Tags (`vX.Y.Z`), nie über den Dateinamen. `WIDGET_VERSION` bei jeder neuen Version zusammen mit `CHANGELOG.md` anpassen. Reine Regel- oder Doku-Änderungen bekommen keine Funktionsversion.
 - IDs und Token kommen vom Server; im Repository nie echte IDs oder Tokens. Keine Secrets ausgeben.
@@ -65,6 +65,7 @@ Unabhängige Arbeit (Layout, Demo, lokale Aufräumarbeiten) läuft im vereinbart
 - In OBS/Browser testen: 2–5 Optionen, wechselnde Stimmen, 100 %, eindeutiger Sieger.
 - Gleichstand mit Stimmen und 0:0: kein Sieger-Styling, Sound nur einmal.
 - Countdown, Overlay, Auto-Hide und Folge-Umfrage regressionsprüfen.
+- Nach Änderungen an Darstellung, Ablauf oder Demo die Beispiele in `demo.html` ansehen (Screenshots im Headless-Browser oder echter Browser) und angeben, welche.
 - Audio nach Interaktion sowie Chat-Erfolg/-Fehler prüfen; echte Chat-Tests vorher abstimmen.
 - Bei Änderungen an der Server-Anbindung zusätzlich: Server nicht erreichbar, Wiederverbindung nach Server-Neustart, fehlende Fähigkeit (älterer Server), leerer und veralteter Stand, doppelt gemeldetes Ende, mehrere Widget-Instanzen.
 - Prüfarten getrennt nennen: Syntaxprüfung, Test gegen Attrappen im Headless-Browser, Demo, Lauf gegen den echten lokalen Server, Abnahme in OBS oder im Stream. Syntaxprüfung ist kein Verhaltenstest; nichts behaupten, was nicht lief.

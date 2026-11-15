@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<!--
+  SpargelPoll – Twitch-Umfragen als wachsende Spargelstangen für OBS-Browser-Sources
+  Copyright (c) 2026 BombingFritz
+  SPDX-License-Identifier: MIT
+  Lizenztext: Datei LICENSE im Repository https://github.com/BombingFritz/TwitchPoll
+  Aufbau nach dem Vorbild von demo.html aus https://github.com/BombingFritz/TwitchPredictionWidget (MIT, derselbe Urheber)
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpargelPoll Demo</title>
+  <style>
+    /* Vorführ- und Vergleichsseite: das echte Widget (SpargelPoll.html) im Demo-Modus, ohne Auth-Server und ohne Twitch */
+    :root {
+      --soil: #15120d; --panel: #1f1b14; --line: #3b3427; --sprout: #7cc444; --frame: #4a7c23;
+      --stalk: #f1ecd8; --muted: #aaa38c; --gold: #ffd24a;
+      --display: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+      --body: "Segoe UI", Arial, "Helvetica Neue", sans-serif;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--soil); color: var(--stalk); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+    .page { max-width: 1240px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 28px; }
+    h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; line-height: 1.05; letter-spacing: .01em; }
+    h1 { font-size: clamp(38px, 7vw, 64px); }
+    h1 em { font-style: normal; color: var(--gold); }
+    h2 { font-size: 28px; }
+    p { margin: 0; max-width: 72ch; }
+    .muted { color: var(--muted); }
+    .eyebrow { font-weight: 800; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--sprout); }
+
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px); gap: 28px; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    .stages { display: grid; gap: 16px; grid-template-columns: 1fr; min-width: 0; }
+    .stages.compare { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .stagebox { display: grid; gap: 6px; min-width: 0; }
+    .stagebox[hidden] { display: none; }
+    .stagebox > span { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
+    /* Bühne im Format der OBS-Quelle (800 × 600); das Widget wird als Ganzes skaliert */
+    .stage { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; }
+    .stage[data-bg="szene"] { background: radial-gradient(ellipse at 70% 15%, #4a5d70 0%, transparent 55%), linear-gradient(180deg, #2b3a46 0%, #1a242c 60%, #10171c 100%); }
+    .stage[data-bg="hell"] { background: linear-gradient(180deg, #e9e4d4 0%, #cfc8b2 100%); }
+    .stage[data-bg="schach"] { background: repeating-conic-gradient(#3a3a3a 0 25%, #2a2a2a 0 50%) 0 0 / 32px 32px; }
+    .stage[data-bg="gruen"] { background: #00b140; }
+    /* color-scheme wie im Widget, sonst malt Chromium einen weißen Hintergrund hinter das transparente Widget */
+    .stage iframe { position: absolute; left: 0; top: 0; width: 800px; height: 600px; border: 0; background: transparent; color-scheme: normal; transform-origin: 0 0; }
+
+    .side { display: grid; gap: 18px; min-width: 0; }
+    .ctl { display: grid; gap: 6px; }
+    .ctl > span, .ctl > label { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+    button { font: 600 15px var(--body); color: var(--stalk); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+    button[aria-pressed="true"] { background: var(--frame); border-color: var(--sprout); }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    input[type="text"] { font: 15px var(--body); color: var(--stalk); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-width: 0; width: 100%; }
+    .row { display: flex; gap: 6px; }
+    .desc { font-size: 15px; color: var(--muted); }
+
+    .clock { display: grid; gap: 8px; }
+    .clock .now { font-family: var(--display); font-size: 24px; }
+    .clock .now b { color: var(--gold); font-weight: 400; }
+    .bar { position: relative; height: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+    .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--frame); border-radius: 6px; }
+    .bar .mk { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--gold); }
+    .events { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-variant-numeric: tabular-nums; font-size: 15px; }
+    .events li { display: grid; grid-template-columns: 44px 1fr; gap: 8px; color: var(--muted); }
+    .events li.past { color: var(--stalk); }
+    .events li.next { color: var(--gold); }
+
+    .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 28px; }
+    .rules div { border-top: 1px solid var(--line); padding-block: 10px; display: grid; gap: 2px; min-width: 0; }
+    .rules b { font-family: var(--display); font-weight: 400; font-size: 21px; }
+    code { font-size: 15px; background: var(--panel); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header style="display:grid;gap:12px">
+      <div class="eyebrow">SpargelPoll · Demo und Design-Vergleich</div>
+      <h1>Wer hat den <em>längsten Spargel</em>?</h1>
+      <p>Hier läuft das echte Widget mit erfundenen Abstimmungen. Es braucht dafür weder den Auth-Server noch Twitch und sendet nichts in den Chat. Jede Option ist eine Spargelstange, ein Mittelteil je 10 Prozent. Am Ende kommen „Abstimmung beendet“, Siegerbanner mit Strahlenkranz und ein kurzes „Tadaaa“.</p>
+      <p class="muted">Für Design-Entwürfe: eine Kopie von <code>SpargelPoll.html</code> ändern und unten als Entwurf laden. Beide laufen dann nebeneinander mit derselben Abstimmung.</p>
+    </header>
+
+    <div class="layout">
+      <div class="stages" id="stages">
+        <div class="stagebox"><span id="labelA">SpargelPoll.html</span><div class="stage" data-bg="szene"><iframe id="frameA" title="SpargelPoll im Demo-Modus"></iframe></div></div>
+        <div class="stagebox" id="boxB" hidden><span id="labelB">Entwurf</span><div class="stage" data-bg="szene"><iframe id="frameB" title="Entwurf im Demo-Modus"></iframe></div></div>
+      </div>
+      <div class="side">
+        <div class="ctl"><span>Beispiel</span>
+          <div class="seg" id="segScenario">
+            <button type="button" data-v="1">Wechselnd</button>
+            <button type="button" data-v="zwei">Zwei Optionen</button>
+            <button type="button" data-v="vier">Vier Optionen</button>
+            <button type="button" data-v="fuenf">Fünf, lange Namen</button>
+            <button type="button" data-v="gleich">Gleichstand</button>
+            <button type="button" data-v="null">0 : 0</button>
+            <button type="button" data-v="hundert">100 %</button>
+            <button type="button" data-v="abbruch">Abbruch</button>
+          </div>
+          <div class="desc" id="desc"></div>
+        </div>
+        <div class="ctl"><span>Anzeige</span>
+          <div class="seg" id="segMode">
+            <button type="button" data-v="stream">Wie im Stream (blendet sich ein und aus)</button>
+            <button type="button" data-v="always">Immer sichtbar</button>
+          </div>
+        </div>
+        <div class="ctl"><span>Hintergrund</span>
+          <div class="seg" id="segBg">
+            <button type="button" data-v="szene">Spielszene</button>
+            <button type="button" data-v="hell">Hell</button>
+            <button type="button" data-v="schach">Transparenz</button>
+            <button type="button" data-v="gruen">Grün</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="draft">Entwurf zum Vergleich (Pfad relativ zu dieser Seite)</label>
+          <div class="row"><input type="text" id="draft" placeholder="z. B. entwuerfe/SpargelPoll-b.html" spellcheck="false"><button type="button" id="draftLoad">Laden</button></div>
+          <div class="desc">Leer lassen für nur ein Widget. Der Entwurf muss <code>?demo=</code> verstehen; eine Kopie von <code>SpargelPoll.html</code> kann das.</div>
+        </div>
+        <div><button type="button" id="restart">Von vorn starten</button></div>
+        <div class="clock">
+          <div class="now" id="now">Sekunde <b>0</b></div>
+          <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+          <ul class="events" id="events"></ul>
+        </div>
+        <p class="desc">Ton: Browser spielen ihn erst nach einem Klick ab, einmal in das Widget klicken. In OBS ist das nicht nötig.</p>
+      </div>
+    </div>
+
+    <section style="display:grid;gap:12px">
+      <h2>Was wann passiert</h2>
+      <div class="rules">
+        <div><b>Keine Abstimmung</b><span class="muted">Das Widget ist unsichtbar. Mit „Immer sichtbar“ steht „Keine aktive Abstimmung“ da.</span></div>
+        <div><b>Start</b><span class="muted">Das Widget erkennt eine neue Abstimmung binnen 5 s, blendet ein und lässt die Stangen nacheinander wachsen. Während der Abstimmung fragt es alle 2 s nach.</span></div>
+        <div><b>Ende</b><span class="muted">3 s „Abstimmung beendet!“, dann wächst der Endstand. Sieger mit Banner und Strahlenkranz, bei Gleichstand nur das Banner. Dazu einmal der Ton.</span></div>
+        <div><b>Ausblenden</b><span class="muted">Rund 8 s nach dem Overlay blendet das Widget aus. Ein nachträgliches „ARCHIVED“ von Twitch löst nichts mehr aus.</span></div>
+        <div><b>Chat</b><span class="muted">Im Stream sendet der Server die Ergebniszeile beim Ende der Abstimmung. Die Demo sendet nichts.</span></div>
+      </div>
+      <p class="muted">In OBS: Browser-Source mit <code>SpargelPoll.html</code>, Größe 800 × 600. Zum Einrichten ohne echte Abstimmung <code>SpargelPoll.html?demo=1&amp;always=1</code>.</p>
+    </section>
+  </div>
+
+  <script>
+    // Ablauf der Demo-Beispiele (muss zu DEMO_* in SpargelPoll.html passen)
+    const CYCLE = 90, START = 3, DURATION = 45, ARCHIVE_AFTER = 10, OVERLAY = 3, RESULT = 8;
+    const ORDER = ['zwei', 'vier', 'fuenf', 'gleich', 'null', 'hundert', 'abbruch'];
+    const INFO = {
+      zwei: ['Zwei Optionen', 'Zwei Optionen, »Auftauchen« führt lange, »Tauchen!« zieht kurz vor Schluss vorbei.'],
+      vier: ['Vier Optionen', 'Vier Optionen mit klarem Favoriten.'],
+      fuenf: ['Fünf Optionen, lange Namen', 'Fünf Optionen mit langen Namen und langer Frage: Platzprobe für Beschriftung und Kopfzeile.'],
+      gleich: ['Gleichstand', 'Drei Optionen, zwei gleichauf: Gleichstand-Banner, kein Sieger, Ton einmal.'],
+      null: ['0 : 0', 'Niemand stimmt ab: gilt als Gleichstand.'],
+      hundert: ['100 %', 'Eine Option bekommt alle Stimmen: zehn Mittelteile, die längste mögliche Stange.'],
+      abbruch: ['Abbruch', 'Abbruch nach 27 s (TERMINATED): Endsequenz mit dem Stand beim Abbruch.']
+    };
+    const END_FRAC = { abbruch: 0.6 };
+    const STORE = 'spargelpoll-demo';
+    let scenario = '1', mode = 'stream', bg = 'szene', draft = '', t0 = Date.now();
+    const $ = id => document.getElementById(id);
+
+    try { const s = JSON.parse(localStorage.getItem(STORE) || '{}'); ({ scenario = scenario, mode = mode, bg = bg, draft = draft } = s); } catch (e) { /* ohne Speicher */ }
+    if (scenario !== '1' && !INFO[scenario]) scenario = '1';
+    function save() { try { localStorage.setItem(STORE, JSON.stringify({ scenario, mode, bg, draft })); } catch (e) { /* ohne Speicher */ } }
+
+    function src(file) { return `${file}?demo=${scenario}${mode === 'always' ? '&always=1' : ''}`; }
+    function load() {
+      $('frameA').src = src('SpargelPoll.html');
+      $('boxB').hidden = !draft;
+      $('stages').classList.toggle('compare', !!draft);
+      if (draft) { $('frameB').src = src(draft); $('labelB').textContent = 'Entwurf: ' + draft; } else { $('frameB').removeAttribute('src'); }
+      $('draft').value = draft;
+      document.querySelectorAll('.stage').forEach(s => { s.dataset.bg = bg; });
+      t0 = Date.now();
+      for (const [id, v] of [['segScenario', scenario], ['segMode', mode], ['segBg', bg]])
+        document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+      $('desc').textContent = scenario === '1' ? 'Alle Beispiele nacheinander, je 90 s.' : INFO[scenario][1];
+      save(); fit(); tick();
+    }
+    const pick = (id, set) => $(id).addEventListener('click', e => { const v = e.target.closest('button')?.dataset.v; if (v) { set(v); load(); } });
+    pick('segScenario', v => { scenario = v; });
+    pick('segMode', v => { mode = v; });
+    pick('segBg', v => { bg = v; });
+    $('restart').addEventListener('click', load);
+    $('draftLoad').addEventListener('click', () => { draft = $('draft').value.trim(); load(); });
+    $('draft').addEventListener('keydown', e => { if (e.key === 'Enter') { draft = $('draft').value.trim(); load(); } });
+
+    // Widget (800 × 600) auf die Bühnenbreite skalieren
+    function fit() { document.querySelectorAll('.stage').forEach(s => { s.querySelector('iframe').style.transform = `scale(${s.clientWidth / 800})`; }); }
+    new ResizeObserver(fit).observe($('stages'));
+
+    function timeline(key) {
+      const end = START + DURATION * (END_FRAC[key] || 1);
+      return [
+        [0, 'Keine Abstimmung'],
+        [START, 'Abstimmung startet (das Widget erkennt sie binnen 5 s)'],
+        [end, key === 'abbruch' ? 'Abbruch (TERMINATED), Overlay „Abstimmung beendet!“' : 'Ende (COMPLETED), Overlay „Abstimmung beendet!“'],
+        [end + OVERLAY, 'Endstand, Sieger oder Gleichstand, Ton'],
+        [end + ARCHIVE_AFTER, 'ARCHIVED von Twitch, ohne zweite Endsequenz'],
+        [Math.round(end + OVERLAY + RESULT), 'Widget blendet aus'],
+      ];
+    }
+    function tick() {
+      const el = (Date.now() - t0) / 1000, k = Math.floor(el / CYCLE), t = el - k * CYCLE;
+      const key = ORDER.includes(scenario) ? scenario : ORDER[k % ORDER.length];
+      $('now').innerHTML = `${INFO[key][0]} · Sekunde <b>${Math.floor(t)}</b> von ${CYCLE}`;
+      $('fill').style.width = (t / CYCLE * 100) + '%';
+      const list = timeline(key).sort((a, b) => a[0] - b[0]);
+      const bar = $('bar');
+      bar.querySelectorAll('.mk').forEach(m => m.remove());
+      list.forEach(([s]) => { const m = document.createElement('div'); m.className = 'mk'; m.style.left = (s / CYCLE * 100) + '%'; bar.appendChild(m); });
+      const next = list.find(([s]) => s > t);
+      $('events').innerHTML = list.map(([s, txt]) => `<li class="${s <= t ? 'past' : next && s === next[0] ? 'next' : ''}"><span>${Math.round(s)} s</span><span>${txt}</span></li>`).join('');
+    }
+    load();
+    setInterval(tick, 500);
+  </script>
+</body>
+</html>

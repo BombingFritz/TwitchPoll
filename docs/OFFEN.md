@@ -6,7 +6,7 @@
 1. **0.9 – Anbindung an den Server:** umgesetzt in 0.9.0 (ADR 0009, Issue #3); reale Abnahme offen (siehe Issue #3).
    - **Später:** Das Widget holt beim Start weiter den Token über `/token`, braucht ihn aber nur noch für die Legacy-Wege. Ob es im Normalbetrieb ohne Token auskommen soll, hängt mit dem Widget-Schlüssel im Server zusammen (Server-Issue #57) [UNGEKLÄRT].
    - **Ziel im Zuge dieser Anbindung (später):** ein Debug-Modus für ausführlichere Tests, der sich über die Einstellungen des Servers (Webkonsole) an- und abschalten lässt. Vorbild: Debug-Modus des Wett-Widgets (`BombingFritz/TwitchPredictionWidget`, dort ADR 0004) und Testmodus der Intro-Topics im Server. Schnittstelle zum Server [UNGEKLÄRT].
-2. **0.9.5 – Vorschau-Werkzeug:** Demo-/Vorschauseite wie `demo.html` im Wett-Widget, um Design-Ideen ohne Server und Twitch zu erproben.
+2. **0.9.5 – Vorschau-Werkzeug:** umgesetzt in 0.9.5: `demo.html` und Demo-Modus `?demo=…` (Spec `demo.md`), mit Vergleich eines Entwurfs.
 3. **1.0 – Design-Update:** Animation und Grafik überarbeiten.
 
 ## Beobachtungen für das Design-Update (Claude, 14.11.2026, Headless-Chromium mit nachgebildetem Server)
@@ -16,7 +16,7 @@ Noch nicht in OBS geprüft; Impact fehlte im Testsystem.
 - Timer ist absolut positioniert und kann lange Fragen überdecken.
 - Die längste Stange reicht bis ins Gras, kürzere enden darüber.
 - Antwortnamen und Frage gehen ungeschützt in `innerHTML`; Zeichen wie `<` stören die Anzeige.
-- Kein Demo-Modus und kein automatischer Test (das Wett-Widget hat `demo.html` und `test/widget-test.js` mit Playwright).
+- ~~Kein Demo-Modus und kein automatischer Test~~: Test seit 0.9.0, Demo seit 0.9.5.
 
 ## Nach 0.8.2 zu prüfen
 1. **Live-Test im Stream:** erledigt. 0.8.2 lief im Stream mit echter Abstimmung, Endsequenz und Chat-Nachricht und hat funktioniert (Nutzer, 14.11.2026; Datum des Streams nicht festgehalten).

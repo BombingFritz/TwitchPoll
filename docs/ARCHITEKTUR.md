@@ -1,6 +1,6 @@
 # Architektur
 ## Referenz und Struktur
-Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klassischem Script am Body-Ende; direkter Aufruf `init()`. Kein Framework, Paketmanager oder Build im Widget. Ablauftest `test/widget-test.js` (Playwright, nur zum Testen; `package.json` mit `npm test`). Logo, `SPITZE_IMG` und `MITTE_IMG` sind drei eingebettete Base64-PNGs.
+Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klassischem Script am Body-Ende; direkter Aufruf `init()`. Kein Framework, Paketmanager oder Build im Widget. Ablauftest `test/widget-test.js` (Playwright, nur zum Testen; `package.json` mit `npm test`). `demo.html` (seit 0.9.5) bindet das Widget im Demo-Modus per iframe ein, mit Zeitleiste, Hintergründen und Vergleich mit einem Entwurf; ihre Zeitleiste muss zu `DEMO_*` im Widget passen. Logo, `SPITZE_IMG` und `MITTE_IMG` sind drei eingebettete Base64-PNGs.
 
 800×600 px, transparenter Body, dunkler Widget-Hintergrund und grüner Rahmen. DOM: `widgetContainer`, `statusIndicator`, Header mit Logo/`pollQuestion`/`timerContainer`, Hauptbereich mit `winnerAnnouncement`, `pollArea`, Gras und `labelsArea`, darüber `pollEndedOverlay`.
 
@@ -17,12 +17,15 @@ Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klass
 | Sound | `getSharedAudioContext`, `unlockAudioOnInteraction`, `playResultSound`, `triggerResultSound` | Wiederverwendeter Context, Freigabe, Synthese, Einmal-Guard |
 | Chat | `generateResultChatMessage`, `sendChatMessage` | Ergebnistext loggen; Helix-Versand nur mit `WIDGET_CHAT_MESSAGE` (Legacy-Rückfall, ADR 0009) |
 | Sichtbarkeit | `showWidget`, `hideWhenNoPoll`, `showNoPoll`, `updateStatus` | Widget-/Leerzustand und Statuspunkt |
+| Demo (0.9.5) | `demoPoll`, `demoVotes`, `DEMO_SCENARIOS` | synthetische Abstimmungen in der Form des Server-Endpunkts für `?demo=…` |
 
 ## Datenhaltung
 Nur flüchtiger JS-Zustand: `currentPoll`, `currentPollId`, `timerInterval`, `pollCheckInterval`, `pollEndTime`, `pollEndedInProgress`, `resultSoundPlayed`, `sharedAudioCtx`, `tokenRefreshPromise`, `lastTokenRefreshAttempt`, `initRetryCount`, `initRetryTimer`, `pollSource` (`server` oder nach 404 `helix`), `lastPollWarning`. Kein Widget-Dateispeicher oder persistenter Poll-Verlauf.
 Poll-Modell: `{id, question, options: [{id, name, votes}], ended}`; Prozentfelder werden berechnet.
 
 ## Datenfluss und Zeitverhalten
+- Demo-Modus (`?demo=1` wechselnd, `?demo=zwei|vier|fuenf|gleich|null|hundert|abbruch` fest, dazu `?always=1`): `init` überspringt Token und Server, `fetchCurrentPoll` liefert `demoPoll()`, `sendChatMessage` sendet nie. Runde von 90 s: Start bei 3 s, Laufzeit 45 s (Abbruch nach 27 s), `ARCHIVED` 10 s nach dem Ende. Es geht keine Anfrage an Server oder Twitch.
+- Ist `AUTO_HIDE` aus (auch über `?always=1` im Demo-Modus), ist das Widget von Anfang an dauerhaft sichtbar.
 - `init` loggt die Version (`WIDGET_VERSION`), holt Token, Client-ID und Broadcaster-ID einmal über `fetchAccessToken` (mit `cache: 'no-store'`), führt die erste Poll-Abfrage aus und setzt ein Idle-Intervall.
 - `applyTokenResponse` übernimmt `access_token` immer, `client_id` und `broadcaster_id` nur, wenn in `CONFIG` kein Wert manuell eingetragen ist. Leere Werte und alte Platzhalter (`DEINE_…`) zählen als nicht eingetragen.
 - Fehlt danach die Client-ID (alter Auth-Server ohne `client_id`), bricht der Start mit „Konfiguration fehlt!“ ab. Fehlt nur die Broadcaster-ID, wird sie über `GET /helix/users` aus dem Token ermittelt.
@@ -77,7 +80,7 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 | Genutzt (0.9.0) | `GET /token` (`access_token`, `client_id`, `broadcaster_id`; nur noch für Start und Legacy-Wege nötig); `GET /api/twitch/poll/current` im bisherigen Takt (ADR 0009). Ergebniszeile sendet der Server (Schalter `results poll on\|off`, Vorgabe aus; einschalten, sobald 0.9.0 in OBS läuft) |
 | Legacy-Ausnahmen (direkt an Twitch, Übergang nach Server-Issue [#50](https://github.com/BombingFritz/Twitch-Companion-JS-server/issues/50)) | `GET /helix/polls` nur nach 404 vom Server (älterer Stand), bis zum Neuladen; `POST /helix/chat/messages` nur mit `WIDGET_CHAT_MESSAGE: true` (Vorgabe aus); `GET /helix/users` nur ohne `broadcaster_id` |
 | Laufender Server des Nutzers | `main` ab `ebbb62b` laut Nutzer (14.11.2026), nicht selbst geprüft |
-| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium, 48 Prüfungen, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
+| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium; Stand 0.9.5: 64 Prüfungen inklusive Demo, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
 
 ## Konfiguration
 | Konstante | Wert | Bedeutung |
@@ -89,7 +92,7 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 | `POLL_ENDPOINT` | `http://localhost:3000/api/twitch/poll/current` | Stand der Abstimmung vom Server (ADR 0009) |
 | `WIDGET_CHAT_MESSAGE` | `false` | `true`: Widget sendet die Ergebniszeile selbst per Helix; nur für Server ohne Ergebniszeilen, nie zusammen mit `results poll on` |
 | `STALE_GRACE_MS` | `30000` | ohne gültigen Stand so lange nach Ablauf der Zeit warten, dann ohne Endsequenz ausblenden |
-| `AUTO_HIDE` | `true` | ohne Poll ausblenden |
+| `AUTO_HIDE` | `true` | ohne Poll ausblenden; `false` = dauerhaft sichtbar (vor 0.9.5 blieb das Widget dann unsichtbar) |
 | `ENDED_OVERLAY_DURATION` | `3000` | Overlay-Dauer in ms |
 | `RESULT_DISPLAY_DURATION` | `7000` | Ergebnisdauer im festen Ausblendpfad in ms |
 | `POLL_CHECK_INTERVAL_ACTIVE` | `2000` | aktives Abfrageintervall in ms |

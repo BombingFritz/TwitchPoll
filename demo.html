@@ -80,7 +80,7 @@
     <header style="display:grid;gap:12px">
       <div class="eyebrow">SpargelPoll · Demo und Design-Vergleich</div>
       <h1>Wer hat den <em>längsten Spargel</em>?</h1>
-      <p>Hier läuft das echte Widget mit erfundenen Abstimmungen. Es braucht dafür weder den Auth-Server noch Twitch und sendet nichts in den Chat. Jede Option ist eine Spargelstange, ein Mittelteil je 10 Prozent. Am Ende kommen „Abstimmung beendet“, Siegerbanner mit Strahlenkranz und ein kurzes „Tadaaa“.</p>
+      <p>Hier läuft das echte Widget mit erfundenen Abstimmungen. Es braucht dafür weder den Auth-Server noch Twitch und sendet nichts in den Chat. Jede Option ist eine Spargelstange, die stufenlos mit ihrem Anteil aus dem Gras wächst. Am Ende klappt das Ergebnis-Banner über die Frage, der Sieger bekommt Schein und Strahlenkranz, dazu ein kurzes „Tadaaa“.</p>
       <p class="muted">Für Design-Entwürfe: eine Kopie von <code>SpargelPoll.html</code> ändern und unten als Entwurf laden. Beide laufen dann nebeneinander mit derselben Abstimmung.</p>
     </header>
 
@@ -136,8 +136,8 @@
       <div class="rules">
         <div><b>Keine Abstimmung</b><span class="muted">Das Widget ist unsichtbar. Mit „Immer sichtbar“ steht „Keine aktive Abstimmung“ da.</span></div>
         <div><b>Start</b><span class="muted">Das Widget erkennt eine neue Abstimmung binnen 5 s, blendet ein und lässt die Stangen nacheinander wachsen. Während der Abstimmung fragt es alle 2 s nach.</span></div>
-        <div><b>Ende</b><span class="muted">3 s „Abstimmung beendet!“, dann wächst der Endstand. Sieger mit Banner und Strahlenkranz, bei Gleichstand nur das Banner. Dazu einmal der Ton.</span></div>
-        <div><b>Ausblenden</b><span class="muted">Rund 8 s nach dem Overlay blendet das Widget aus. Ein nachträgliches „ARCHIVED“ von Twitch löst nichts mehr aus.</span></div>
+        <div><b>Ende</b><span class="muted">Das Schild zeigt „Beendet“, die Stangen wachsen auf den Endstand. Nach 1,4 s klappt das Banner über die Frage: „Ergebnis“ mit Sieger samt Schein und Strahlenkranz, übrige abgedunkelt, oder „Gleichstand“. Dazu einmal der Ton.</span></div>
+        <div><b>Ausblenden</b><span class="muted">8 s nach dem Ergebnis gleitet das Widget hinaus. Ein nachträgliches „ARCHIVED“ von Twitch löst nichts mehr aus.</span></div>
         <div><b>Chat</b><span class="muted">Im Stream sendet der Server die Ergebniszeile beim Ende der Abstimmung. Die Demo sendet nichts.</span></div>
       </div>
       <p class="muted">In OBS: Browser-Source mit <code>SpargelPoll.html</code>, Größe 800 × 600. Zum Einrichten ohne echte Abstimmung <code>SpargelPoll.html?demo=1&amp;always=1</code>.</p>
@@ -146,7 +146,7 @@
 
   <script>
     // Ablauf der Demo-Beispiele (muss zu DEMO_* in SpargelPoll.html passen)
-    const CYCLE = 90, START = 3, DURATION = 45, ARCHIVE_AFTER = 10, OVERLAY = 3, RESULT = 8;
+    const CYCLE = 90, START = 3, DURATION = 45, ARCHIVE_AFTER = 10, SETTLE = 1.4, RESULT = 8;  // SETTLE/RESULT wie END_SETTLE_MS/RESULT_DISPLAY_DURATION im Widget
     const ORDER = ['zwei', 'vier', 'fuenf', 'gleich', 'null', 'hundert', 'abbruch'];
     const INFO = {
       zwei: ['Zwei Optionen', 'Zwei Optionen, »Auftauchen« führt lange, »Tauchen!« zieht kurz vor Schluss vorbei.'],
@@ -154,7 +154,7 @@
       fuenf: ['Fünf Optionen, lange Namen', 'Fünf Optionen mit langen Namen und langer Frage: Platzprobe für Beschriftung und Kopfzeile.'],
       gleich: ['Gleichstand', 'Drei Optionen, zwei gleichauf: Gleichstand-Banner, kein Sieger, Ton einmal.'],
       null: ['0 : 0', 'Niemand stimmt ab: gilt als Gleichstand.'],
-      hundert: ['100 %', 'Eine Option bekommt alle Stimmen: zehn Mittelteile, die längste mögliche Stange.'],
+      hundert: ['100 %', 'Eine Option bekommt alle Stimmen: die längste mögliche Stange.'],
       abbruch: ['Abbruch', 'Abbruch nach 27 s (TERMINATED): Endsequenz mit dem Stand beim Abbruch.']
     };
     const END_FRAC = { abbruch: 0.6 };
@@ -197,10 +197,10 @@
       return [
         [0, 'Keine Abstimmung'],
         [START, 'Abstimmung startet (das Widget erkennt sie binnen 5 s)'],
-        [end, key === 'abbruch' ? 'Abbruch (TERMINATED), Overlay „Abstimmung beendet!“' : 'Ende (COMPLETED), Overlay „Abstimmung beendet!“'],
-        [end + OVERLAY, 'Endstand, Sieger oder Gleichstand, Ton'],
+        [end, key === 'abbruch' ? 'Abbruch (TERMINATED), Schild „Beendet“, Endstand wächst' : 'Ende (COMPLETED), Schild „Beendet“, Endstand wächst'],
+        [end + SETTLE, 'Ergebnis-Banner, Sieger oder Gleichstand, Ton'],
         [end + ARCHIVE_AFTER, 'ARCHIVED von Twitch, ohne zweite Endsequenz'],
-        [Math.round(end + OVERLAY + RESULT), 'Widget blendet aus'],
+        [Math.round(end + SETTLE + RESULT), 'Widget blendet aus'],
       ];
     }
     function tick() {

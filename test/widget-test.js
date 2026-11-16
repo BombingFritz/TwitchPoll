@@ -120,6 +120,15 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     st.poll = Object.assign({}, st.poll, { status: 'COMPLETED', endedAt: new Date(await now(page)).toISOString() });
     await advance(page, 2000);
     ok((await counts(page)).overlays === 1, 'COMPLETED: Endsequenz gestartet');
+    ok((await text(page, '#statusChip')).includes('Beendet'), '1.0: Statusschild „Beendet“');
+    await advance(page, 1500);
+    ok(await page.evaluate(() => document.getElementById('winnerAnnouncement').classList.contains('visible')), '1.0: Ergebnis-Banner sichtbar');
+    ok((await text(page, '#bannerLabel')) === 'Ergebnis' && (await text(page, '#bannerText')).includes('»Typ VII« gewinnt mit 50 %'), '1.0: Banner nennt den Sieger');
+    ok(await page.evaluate(() => {
+      const cols = Array.from(document.querySelectorAll('.poll-option'));
+      return cols[0].classList.contains('winner') && cols.slice(1).every(c => c.classList.contains('dim') && !c.classList.contains('winner'));
+    }), '1.0: Sieger hervorgehoben, übrige abgedunkelt');
+    ok(await page.evaluate(() => window.__firstBar === document.querySelector('.poll-option')), '1.0: Endsequenz ohne Neuaufbau der Stangen');
     st.poll = Object.assign({}, st.poll, { status: 'ARCHIVED' });
     await advance(page, 14000);
     let c = await counts(page);
@@ -148,6 +157,7 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     ok(c.overlays === 1 && c.sounds === 1, 'TERMINATED: eine Endsequenz, Sound einmal');
     ok((await text(page, '#winnerAnnouncement')).includes('Gleichstand'), 'TERMINATED 0:0: Gleichstand-Banner');
     ok((await page.locator('.poll-option.winner').count()) === 0, '0:0: kein Sieger-Styling');
+    ok((await page.locator('.poll-option.dim').count()) === 0, '0:0: keine Option abgedunkelt');
     await page.context().close();
   }
 
@@ -326,6 +336,21 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     ok((await page.frameLocator('#frameA').locator('#widgetContainer').count()) === 1, 'demo.html: Widget eingebunden');
     ok(await page.evaluate(() => getComputedStyle(document.getElementById('boxB')).display === 'none'), 'demo.html: ohne Entwurf nur ein Widget');
     await ctx.close();
+  }
+
+  // 14) Statusschild (1.0): pulsiert in den letzten 15 s, rot in den letzten 10 s
+  {
+    const st = {};
+    st.poll = serverPoll({ now: T0, votes: [1, 2], left: 20 });
+    const page = await open(browser, st);
+    await advance(page, 1500);
+    const chip = () => page.evaluate(() => document.getElementById('statusChip').className);
+    ok(!(await chip()).includes('pulse'), 'Schild: bei 18 s noch ruhig');
+    await advance(page, 6000);
+    ok((await chip()).includes('pulse') && !(await chip()).includes('hurry'), 'Schild: bei 12 s pulsierend');
+    await advance(page, 4000);
+    ok((await chip()).includes('hurry'), 'Schild: bei 8 s rot');
+    await page.context().close();
   }
 
   await browser.close();

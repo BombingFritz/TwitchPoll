@@ -1,6 +1,6 @@
 {
   "name": "spargelpoll",
-  "version": "0.9.5",
+  "version": "1.0.0",
   "description": "SpargelPoll: Twitch-Umfragen als wachsende Spargelstangen für OBS-Browser-Sources. Widget für den Twitch Companion JS server.",
   "license": "MIT",
   "author": "BombingFritz",

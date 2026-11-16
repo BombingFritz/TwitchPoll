@@ -7,7 +7,8 @@
 const path = require('path');
 const { chromium } = require('playwright');
 
-const FILE = 'file://' + path.resolve(__dirname, '..', 'SpargelPoll.html');
+// WIDGET=<Pfad> prüft eine andere Fassung, z. B. einen Entwurf: WIDGET=entwuerfe/SpargelPoll-1.0.html node test/widget-test.js
+const FILE = 'file://' + path.resolve(__dirname, '..', process.env.WIDGET || 'SpargelPoll.html');
 const T0 = new Date('2026-11-14T20:00:00Z').getTime();
 const CORS = { 'Access-Control-Allow-Origin': '*' };
 let fails = 0;
@@ -63,15 +64,12 @@ async function open(browser, state, query) {
   });
   await page.route('https://api.twitch.tv/helix/users**', route => route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: '{"data":[{"id":"123"}]}' }));
   await page.goto(FILE + (query || ''));
-  // Zähler für Endsequenzen (Overlay) und Sound; Sound selbst wird nicht abgespielt
+  // Zähler für Endsequenzen (gestartete triggerPollEnded) und Sound; Sound selbst wird nicht abgespielt.
+  // Unabhängig von der Darstellung, damit dieselbe Testreihe auch Entwürfe prüft.
   await page.evaluate(() => {
     window.__overlays = 0; window.__sounds = 0;
-    new MutationObserver(() => {
-      const el = document.getElementById('pollEndedOverlay');
-      const vis = el.classList.contains('visible');
-      if (vis && !window.__ovVis) window.__overlays++;
-      window.__ovVis = vis;
-    }).observe(document.getElementById('pollEndedOverlay'), { attributes: true });
+    const orig = triggerPollEnded;
+    triggerPollEnded = function(p) { if (!pollEndedInProgress) window.__overlays++; return orig(p); };
     playResultSound = function() { window.__sounds++; };
   });
   return page;
@@ -85,6 +83,8 @@ const now = page => page.evaluate(() => Date.now());
 const visible = page => page.evaluate(() => document.getElementById('widgetContainer').classList.contains('visible'));
 const text = (page, sel) => page.evaluate(s => { const e = document.querySelector(s); return e ? e.textContent : null; }, sel);
 const counts = page => page.evaluate(() => ({ overlays: window.__overlays, sounds: window.__sounds }));
+// Restzeit in Sekunden, ob als „55“ oder als „0:55“ angezeigt
+const seconds = t => { const m = String(t || '').match(/(?:(\d+):)?(\d+)\s*$/); return m ? (Number(m[1] || 0) * 60 + Number(m[2])) : NaN; };
 const connected = page => page.evaluate(() => document.getElementById('statusIndicator').classList.contains('connected'));
 
 (async () => {
@@ -103,14 +103,19 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     ok(await visible(page), 'ACTIVE: Widget sichtbar');
     ok((await page.locator('.poll-option').count()) === 3, 'ACTIVE: drei Spargelstangen');
     ok((await text(page, '#pollQuestion')) === 'Welches Boot nehmen wir heute?', 'ACTIVE: Frage angezeigt');
-    const t1 = Number(await text(page, '#timer'));
+    const t1 = seconds(await text(page, '#timer'));
     ok(t1 > 50 && t1 <= 60, 'ACTIVE: Timer aus endsAt (' + t1 + ' s)');
     await page.evaluate(() => { window.__firstBar = document.querySelector('.poll-option'); });
     st.poll = serverPoll({ now: await now(page) - 6000, votes: [5, 3, 2] });
     await advance(page, 2500);
     ok((await text(page, '.label-group .option-percentage')) === '50%', 'Aktualisierung: neue Prozentwerte');
     ok(await page.evaluate(() => window.__firstBar === document.querySelector('.poll-option')), 'Aktualisierung: kein Neuaufbau der Stangen');
-    ok((await page.locator('.poll-option').first().locator('.spargel-mitte').count()) === 5, 'Aktualisierung: 50 % = fünf Mittelteile');
+    ok(await page.evaluate(() => {
+      const bar = document.querySelector('.poll-option');
+      const segs = bar.querySelectorAll('.spargel-mitte').length;
+      if (segs) return segs === 5;                                                        // bis 0.9.5: ein Mittelteil je 10 %
+      return getComputedStyle(bar).getPropertyValue('--h').trim() === stalkHeight(50) + 'px'; // ab 1.0: Höhe nach Prozent
+    }), 'Aktualisierung: Stangenlänge entspricht 50 %');
     ok(st.helixCalls === 0, 'Kein GET /helix/polls');
     st.poll = Object.assign({}, st.poll, { status: 'COMPLETED', endedAt: new Date(await now(page)).toISOString() });
     await advance(page, 2000);
@@ -208,7 +213,7 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     await advance(page, 1500);
     ok(await visible(page), 'Neuladen: laufende Abstimmung sofort sichtbar');
     ok((await text(page, '.label-group .option-percentage')) === '70%', 'Neuladen: aktueller Stand');
-    const t = Number(await text(page, '#timer'));
+    const t = seconds(await text(page, '#timer'));
     ok(t > 40 && t <= 45, 'Neuladen: Restzeit aus endsAt (' + t + ' s)');
     await page.context().close();
   }

@@ -5,6 +5,32 @@ Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-16
+
+Design-Update (ADR 0010). Als Entwurf in `demo.html` neben 0.9.5 verglichen und vom Nutzer abgenommen. Geprüft mit `npm test` (73 Prüfungen, 0 FAIL) und Screenshots aller Demo-Beispiele im Headless-Chromium; nicht in OBS, nicht im Stream. OBS-Pfad und Quellgröße 800 × 600 bleiben gleich, Server-Anbindung, Ergebnislogik, Ton und Chat unverändert.
+
+### Changed
+- Spargelstangen wachsen stufenlos nach Prozent statt in Stücken je 10 Prozent und gleiten bei Änderungen weich nach, mit leichtem Nachfedern; Prozentzahlen zählen mit.
+- Je Option eine Spalte mit Stange, Prozent, Stimmen und Name auf einer gemeinsamen Bodenlinie; Namen höchstens zwei Zeilen.
+- Endsequenz ohne Neuaufbau: Die Stangen bleiben stehen, nach 1,4 s klappt ein Ergebnis-Banner über die Frage (gold „Ergebnis“, grün „Gleichstand“); Sieger mit Schein und drehendem Strahlenkranz, übrige abgedunkelt. Statt 3 s Vollbild-Overlay. Anzeige danach 8 s.
+- Gestaltung nach SpargelWette: dünnerer Rahmen mit runden Ecken, durchscheinender Hintergrund, Kennung „Abstimmung“, Frage höchstens zwei Zeilen, Ein- und Ausblenden mit Gleiten.
+- Statusschild „Läuft m:ss“ oben rechts statt des schwebenden Timers; pulsiert in den letzten 15 s, rot in den letzten 10 s, am Ende „Beendet“.
+- Gras in zwei Ebenen: Wiese mit Textur hinter der Beschriftung, Halmsaum vor den Stangenfüßen; die Stangen wachsen aus dem Gras.
+- „1 Stimme“ statt „1 Stimmen“. Keine Emojis mehr im Bild.
+- Einstellung `ENDED_OVERLAY_DURATION` entfällt; neu `END_SETTLE_MS` (1400). `RESULT_DISPLAY_DURATION` 8000 statt 7000.
+
+### Fixed
+- Heller Saum um die Spargelstangen: Spitze und Mittelstück einmalig bereinigt, Mittelstück nahtlos wiederholbar; Logo unverändert (Prüfsummen in `docs/ARCHITEKTUR.md`).
+- Rahmen rechts abgeschnitten, längste Stange ragte ins Gras, „Sekunden“ unlesbar, Timer über langen Fragen.
+- Antwortnamen werden als Text gesetzt statt als HTML.
+
+### Removed
+- Überbleibsel `vc-init` und `data-lt-installed` im HTML.
+
+### Dokumentiert
+- ADR 0010; Specs `visualisierung`, `ergebnisanzeige`, `countdown`, `sichtbarkeit`; `AGENTS.md` (Grafiken einmalig bereinigt, danach wieder unverändert); ARCHITEKTUR, BUGS, OFFEN, README, `demo.html`.
+- Testreihe zählt Endsequenzen unabhängig von der Darstellung und prüft per `WIDGET=<Pfad>` auch Entwürfe; neue Prüfungen für Banner, Hervorhebung, Endsequenz ohne Neuaufbau und Statusschild.
+
 ## [0.9.5] - 2026-11-15
 
 Vorschau-Werkzeug für das Design-Update (Versionsplan in `docs/OFFEN.md`). Geprüft mit `npm test` (64 Prüfungen, 0 FAIL) und Screenshots von `demo.html` im Headless-Chromium; nicht in OBS.

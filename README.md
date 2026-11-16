@@ -1,6 +1,6 @@
 # SpargelPoll
 
-SpargelPoll zeigt Twitch-Umfragen in einer OBS-Browser-Source als wachsende Spargelstangen. Am Ende der Umfrage ertönt ein kurzes „Tadaaa“, der Sieger wird hervorgehoben und der Server schreibt eine Ergebnisnachricht in den Twitch-Chat.
+SpargelPoll zeigt Twitch-Umfragen in einer OBS-Browser-Source als Spargelstangen, die aus dem Gras wachsen. Am Ende klappt ein Ergebnis-Banner auf, der Sieger wird hervorgehoben, ein kurzes „Tadaaa“ ertönt und der Server schreibt eine Ergebnisnachricht in den Twitch-Chat.
 
 Das Widget ist eine einzelne HTML-Datei (`SpargelPoll.html`) mit eingebettetem CSS, JavaScript und drei PNG-Grafiken. Es gibt keinen Build-Schritt und keine Laufzeit-Abhängigkeiten; Playwright braucht nur der Test.
 
@@ -9,9 +9,9 @@ Das Widget ist eine einzelne HTML-Datei (`SpargelPoll.html`) mit eingebettetem C
 ## Features
 
 - Holt den Stand der Umfrage beim Server (alle 5 s ohne Umfrage, alle 2 s während einer Umfrage); Twitch fragt nur der Server.
-- Eine Spargelstange pro Antwortoption, ein Spargel-Segment je 10 Prozent; Stimmenänderungen wachsen ruhig nach, statt neu aufgebaut zu werden.
-- Countdown bis zum Ende der Umfrage.
-- Endsequenz: „Umfrage beendet“-Overlay, Siegerbanner mit Strahlenkranz bzw. Gleichstand-Banner.
+- Eine Spargelstange pro Antwortoption, stufenlos so lang wie ihr Anteil; Stimmenänderungen gleiten weich nach, Prozentzahlen zählen mit.
+- Statusschild mit Restzeit („Läuft 0:42“), pulsiert in den letzten 15 s, rot in den letzten 10 s.
+- Endsequenz ohne Neuaufbau: Ergebnis-Banner über der Frage, Sieger mit Schein und Strahlenkranz, übrige abgedunkelt; bei Gleichstand ein grünes Banner.
 - Ergebnis-Sound per Web Audio API, genau einmal je Umfrage-Ende.
 - Ergebnisnachricht im Chat („Den längsten Spargel hat …“ bzw. Gleichstand), gesendet vom Server beim Ende der Umfrage.
 - Blendet sich ohne aktive Umfrage automatisch aus.

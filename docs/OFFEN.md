@@ -7,9 +7,9 @@
    - **Später:** Das Widget holt beim Start weiter den Token über `/token`, braucht ihn aber nur noch für die Legacy-Wege. Ob es im Normalbetrieb ohne Token auskommen soll, hängt mit dem Widget-Schlüssel im Server zusammen (Server-Issue #57) [UNGEKLÄRT].
    - **Ziel im Zuge dieser Anbindung (später):** ein Debug-Modus für ausführlichere Tests, der sich über die Einstellungen des Servers (Webkonsole) an- und abschalten lässt. Vorbild: Debug-Modus des Wett-Widgets (`BombingFritz/TwitchPredictionWidget`, dort ADR 0004) und Testmodus der Intro-Topics im Server. Schnittstelle zum Server [UNGEKLÄRT].
 2. **0.9.5 – Vorschau-Werkzeug:** umgesetzt in 0.9.5: `demo.html` und Demo-Modus `?demo=…` (Spec `demo.md`), mit Vergleich eines Entwurfs.
-3. **1.0 – Design-Update:** Animation und Grafik überarbeiten.
+3. **1.0 – Design-Update:** umgesetzt in 1.0.0 (ADR 0010); Erprobung im Stream offen.
 
-## Beobachtungen für das Design-Update (Claude, 14.11.2026, Headless-Chromium mit nachgebildetem Server)
+## Beobachtungen für das Design-Update (Claude, 14.11.2026) – erledigt in 1.0.0, siehe BUGS.md
 Noch nicht in OBS geprüft; Impact fehlte im Testsystem.
 - Rechter Rand abgeschnitten: `body` hat den Standardabstand von 8 px, der Rahmen von 8 px liegt außerhalb der 800 px; Rahmen und Statuspunkt rechts fehlen teilweise.
 - Beschriftung „Sekunden“ (`timer-label`) hat keinen eigenen Stil und ist schwarz auf dunklem Grund.

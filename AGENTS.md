@@ -44,6 +44,7 @@ Unabhängige Arbeit (Layout, Demo, lokale Aufräumarbeiten) läuft im vereinbart
 ## Schutzregeln des Widgets
 - Referenz ist `SpargelPoll.html` im aktuellen Stand von `main`. `demo.html` bindet sie im Demo-Modus ein; ihre Zeitleiste muss zu `DEMO_*` im Widget passen (Spec `demo.md`). Der Demo-Modus fragt weder Server noch Twitch und sendet nichts.
 - Bestehende Struktur erhalten: eine HTML-Datei, Inline-CSS/JS, drei eingebettete PNGs (ADR 0001). Kein Neuaufbau der Datei aus Suchsnippets.
+- Die Spargelgrafiken wurden mit 1.0 einmalig bereinigt (ADR 0010, Nutzer 16.11.2026). Danach bleiben alle drei PNGs wieder unverändert; Prüfsummen in `docs/ARCHITEKTUR.md`. Grafiken nie neu generieren.
 - Versionen nur über `CHANGELOG.md` und Git-Tags (`vX.Y.Z`), nie über den Dateinamen. `WIDGET_VERSION` bei jeder neuen Version zusammen mit `CHANGELOG.md` anpassen. Reine Regel- oder Doku-Änderungen bekommen keine Funktionsversion.
 - IDs und Token kommen vom Server; im Repository nie echte IDs oder Tokens. Keine Secrets ausgeben.
 - Nur beauftragte, gezielte Änderungen. Timer, Layout, API-Anbindung und Animation ohne Auftrag unverändert lassen.
@@ -59,7 +60,7 @@ Unabhängige Arbeit (Layout, Demo, lokale Aufräumarbeiten) läuft im vereinbart
 - `npm test` (`test/widget-test.js`, Headless-Chromium, Server und Twitch nachgebildet): Ergebnis `0 FAIL`. Neue Funktionen bekommen dort eigene Prüfungen.
 - Vollständigkeit: HTML-Body, Script, alle Funktionsdefinitionen und `init();` vorhanden.
 - Diff zur tatsächlichen Ausgangsdatei prüfen; unerwartete Änderungen ausschließen.
-- Alle drei eingebetteten PNGs bytegleich erhalten; Hashes vergleichen.
+- Alle drei eingebetteten PNGs bytegleich erhalten; Hashes mit `docs/ARCHITEKTUR.md` vergleichen.
 - Keine echten IDs/Tokens im Diff.
 - Updates dürfen keinen unnötigen Neuaufbau der Optionen auslösen.
 - In OBS/Browser testen: 2–5 Optionen, wechselnde Stimmen, 100 %, eindeutiger Sieger.

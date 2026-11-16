@@ -1,8 +1,8 @@
 # Architektur
 ## Referenz und Struktur
-Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klassischem Script am Body-Ende; direkter Aufruf `init()`. Kein Framework, Paketmanager oder Build im Widget. Ablauftest `test/widget-test.js` (Playwright, nur zum Testen; `package.json` mit `npm test`). `demo.html` (seit 0.9.5) bindet das Widget im Demo-Modus per iframe ein, mit Zeitleiste, Hintergründen und Vergleich mit einem Entwurf; ihre Zeitleiste muss zu `DEMO_*` im Widget passen. Logo, `SPITZE_IMG` und `MITTE_IMG` sind drei eingebettete Base64-PNGs.
+Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klassischem Script am Body-Ende; direkter Aufruf `init()`. Kein Framework, Paketmanager oder Build im Widget. Ablauftest `test/widget-test.js` (Playwright, nur zum Testen; `package.json` mit `npm test`). `demo.html` (seit 0.9.5) bindet das Widget im Demo-Modus per iframe ein, mit Zeitleiste, Hintergründen und Vergleich mit einem Entwurf; ihre Zeitleiste muss zu `DEMO_*` im Widget passen. Logo, `SPITZE_IMG` und `MITTE_IMG` sind drei eingebettete Base64-PNGs. Seit 1.0 sind Spitze und Mittelstück einmalig bereinigt (ADR 0010): ohne hellen Saum, Mittelstück auf 112 × 79 px zugeschnitten und nahtlos senkrecht wiederholbar. Stand: Spitze `53e05dc9…bf66` (12.127 Bytes), Mittelstück `103a740d…6bed` (5.920 Bytes), Logo `99beb4d2…0d8d` (201.097 Bytes); SHA-256 der dekodierten PNGs.
 
-800×600 px, transparenter Body, dunkler Widget-Hintergrund und grüner Rahmen. DOM: `widgetContainer`, `statusIndicator`, Header mit Logo/`pollQuestion`/`timerContainer`, Hauptbereich mit `winnerAnnouncement`, `pollArea`, Gras und `labelsArea`, darüber `pollEndedOverlay`.
+800×600 px, transparenter Body, durchscheinend dunkler Widget-Hintergrund, grüner Rahmen 5 px mit runden Ecken (Gestaltung angelehnt an SpargelWette). DOM: `widgetContainer` mit `statusIndicator`; Kopf mit Logo, Kennung „Abstimmung“, `pollQuestion` (höchstens zwei Zeilen), Statusschild `statusChip` (`chipLabel`, `timer`) und Ergebnis-Banner `winnerAnnouncement` (`bannerLabel`, `bannerText`), das sich über den Kopf legt; Hauptbereich mit Wiese `grass-area` (hinten), `pollArea` mit je Option einer Spalte `.poll-option` (`.stalk-zone` mit `.winner-tip-deco` und `.stalk` aus `.body` und `.tip`, darunter `.label-group` mit Prozent, Stimmen und Name) und Halmsaum `grass-front` (vor den Stangenfüßen). Die Halme sind SVG im CSS, keine Bilddatei.
 
 ## Funktionsbereiche
 | Bereich | Funktionen | Aufgabe |
@@ -10,10 +10,10 @@ Referenzdatei: `SpargelPoll.html`. Eine HTML-Datei mit Inline-CSS, DOM und klass
 | Start/Auth | `init`, `fetchAccessToken`, `applyTokenResponse`, `isConfigured`, `getUserId`, `scheduleInitRetry` | Token und IDs vom Auth-Server übernehmen, Konfiguration prüfen, ggf. Benutzer-ID bestimmen, Polling starten; bei nicht erreichbarem Auth-Server Start später wiederholen |
 | Token-Erneuerung | `requestNewToken`, `refreshAccessToken`, `twitchFetchWithRefresh` | Bei HTTP 401/403 neuen Token holen und den Twitch-Aufruf einmal wiederholen |
 | Poll-Daten | `checkForActivePoll`, `fetchCurrentPoll`, `fromServerPoll`, `toCurrentPoll`, `keepOrGiveUp`, `warnPollOnce`, `handlePollFromAPI`, `updatePollFromAPI`, `getPollEndsAt` | Stand vom Server holen (Rückfall Helix bei 404), in interne Form bringen, aktive Poll aufbauen/aktualisieren, Endzeit bestimmen; ohne gültigen Stand letzten Stand halten |
-| Timer | `startTimer`, `stopTimer`, `updateTimer` | Restsekunden anzeigen, Intervall 100 ms |
+| Statusschild | `setChip`, `startTimer`, `stopTimer`, `updateTimer` | „Läuft m:ss“ (Intervall 250 ms), pulsiert ab 15 s, rot ab 10 s; am Ende „Beendet“ |
 | Ergebnis | `calculatePercentages`, `findWinner`, `triggerPollEnded` | Prozent, Gewinner-/Gleichstand-Erkennung und Endsequenz |
-| Darstellung | `renderPoll`, `updatePollValues` | Initialer Neuaufbau bzw. differenzielle Updates |
-| Sieger | `showWinnerAnnouncement`, `hideWinnerAnnouncement`, `triggerWinnerDecoration`, `resetWinnerDecoration` | Banner und Strahlenkranz |
+| Darstellung | `renderPoll`, `buildPoll`, `sameOptions`, `updatePollValues`, `stalkHeight`, `countTo`, `optionKey`, `pollColumns`, `columnFor` | Spalten bei neuer Abstimmung aufbauen, sonst nur Werte setzen: Stangenhöhe über `--h`, Prozent zählen hoch |
+| Ergebnis | `showResult`, `resetResult`, `showWinnerAnnouncement`, `hideWinnerAnnouncement` | Ergebnis-Banner (Schrift passt sich langen Namen an), Sieger mit Schein und Strahlenkranz, übrige abgedunkelt |
 | Sound | `getSharedAudioContext`, `unlockAudioOnInteraction`, `playResultSound`, `triggerResultSound` | Wiederverwendeter Context, Freigabe, Synthese, Einmal-Guard |
 | Chat | `generateResultChatMessage`, `sendChatMessage` | Ergebnistext loggen; Helix-Versand nur mit `WIDGET_CHAT_MESSAGE` (Legacy-Rückfall, ADR 0009) |
 | Sichtbarkeit | `showWidget`, `hideWhenNoPoll`, `showNoPoll`, `updateStatus` | Widget-/Leerzustand und Statuspunkt |
@@ -36,16 +36,17 @@ Poll-Modell: `{id, question, options: [{id, name, votes}], ended}`; Prozentfelde
 - Neue aktive ID: `handlePollFromAPI`, initiales Rendering, Timer, aktives Intervall. Bekannte aktive Poll: `updatePollFromAPI` → `updatePollValues`.
 - Endstatus `COMPLETED`, `TERMINATED`, `ARCHIVED` einer angezeigten Poll startet `triggerPollEnded`; `pollEndedInProgress` verhindert Wiederholung. Ein `ARCHIVED` nach `COMPLETED` derselben Abstimmung trifft entweder die laufende Endsequenz oder ein leeres Widget und löst nichts aus.
 - Kein gültiger Stand (Netzwerkfehler, HTTP-Fehler außer 404, ungültige Antwort) oder `WAITING`, während eine Abstimmung angezeigt wird: Der letzte Stand bleibt, die Warnung erscheint einmal, der Statuspunkt wird rot. `keepOrGiveUp` blendet erst aus, wenn die Zeit der Abstimmung seit `STALE_GRACE_MS` abgelaufen ist, ohne Endsequenz. Ohne angezeigte Abstimmung führt `WAITING` zum Ausblenden. Nach jeder erfolgreichen Abfrage ist der Statuspunkt grün.
-- Endsequenz: Polling/Timer stoppen → Endwerte übernehmen → Ende-Overlay 3000 ms.
-- Bei Overlay-Ende: Sound-Flag zurücksetzen, Text erzeugen und loggen, danach `renderPoll(currentPoll, true)`. Gesendet wird die Zeile vom Server beim Ende der Abstimmung; das Widget sendet nur mit `WIDGET_CHAT_MESSAGE: true`, dann asynchron (nicht awaited) per Helix.
-- Initialer Aufbau: Option um `index*200` ms versetzt; Mittelteile je 75 ms, Opacity-Transition 0,12 s.
-- Sieger-/Gleichstand-Timeout je Option: `numSections*75+300` ms nach Optionsaufbau. Im Siegerfall Strahlenkranz und Banner, im Gleichstand Banner; dort auch `triggerResultSound`.
-- Separater Ausblendpfad: nach `10*75+300` ms plus `RESULT_DISPLAY_DURATION` wird zurückgesetzt und Idle-Polling gestartet. Dieser feste Delay ist nicht identisch mit jedem optionsabhängigen Siegesanimationszeitpunkt.
+- Endsequenz (seit 1.0, ADR 0010): Polling stoppen, Schild „Beendet“, Endwerte übernehmen. Die Spalten bleiben stehen; die Stangen gleiten auf den Endstand.
+- Nach `END_SETTLE_MS` (1,4 s): `showResult` mit Ergebnis-Banner, Sieger (`.winner`) bzw. Gleichstand, übrige abgedunkelt (`.dim`), dazu `triggerResultSound`. Zugleich Text erzeugen und loggen. Gesendet wird die Zeile vom Server beim Ende der Abstimmung; das Widget sendet nur mit `WIDGET_CHAT_MESSAGE: true`, dann asynchron (nicht awaited) per Helix.
+- Nach `RESULT_DISPLAY_DURATION` (8 s) ausblenden und Idle-Polling starten; den Inhalt setzt `showNoPoll` erst nach dem Ausblenden zurück (500 ms), außer es läuft schon die nächste Abstimmung.
+- Initialer Aufbau: Spalten um `index*120` ms versetzt einblenden (Gleiten von unten); die Stangen wachsen von 0 auf ihren Wert.
+- Stangenhöhe = `STALK_MIN` (46 px, nur die Spitze schaut aus dem Gras) + Anteil × (`STALK_MAX` 300 px − `STALK_MIN`), als CSS-Variable `--h` mit Übergang 0,9 s und leichtem Nachfedern, auch beim Schrumpfen. Prozentzahlen zählen in 0,6 s zum neuen Wert.
+- Ein- und Ausblenden des Widgets: Deckkraft und Gleiten von unten (0,45 s).
 
 ## Ergebnisberechnung
 Prozent = `Math.round(votes/totalVotes*100)`, bei Gesamtzahl 0 jeweils 0. Rundungswerte müssen sich nicht zu 100 summieren.
 `findWinner` liefert nur bei eindeutigem Maximum über 0 einen Gewinner; sonst `null`. Alle Optionen mit 0 Stimmen gelten als Gleichstand.
-Segmente = `Math.max(0, Math.round(percentage/10))`. Updates fügen nur zusätzliche Segmente hinzu oder entfernen überzählige.
+Bis 0.9.5 bestand die Stange aus einem Mittelteil je gerundeten 10 Prozent; seit 1.0 ist die Höhe stufenlos (siehe oben).
 
 ## Sound und Chat
 Sound: zwei kurze Dreieck-Töne C5/E5 und ein gehaltener Sägezahn-Dreiklang C5–E5–G5. `resultSoundPlayed` verhindert Mehrfachauslösung. `click`, `keydown`, `touchstart`, `pointerdown` versuchen, den AudioContext fortzusetzen. Es gibt kein Audio-Dateiasset.
@@ -80,7 +81,7 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 | Genutzt (0.9.0) | `GET /token` (`access_token`, `client_id`, `broadcaster_id`; nur noch für Start und Legacy-Wege nötig); `GET /api/twitch/poll/current` im bisherigen Takt (ADR 0009). Ergebniszeile sendet der Server (Schalter `results poll on\|off`, Vorgabe aus; einschalten, sobald 0.9.0 in OBS läuft) |
 | Legacy-Ausnahmen (direkt an Twitch, Übergang nach Server-Issue [#50](https://github.com/BombingFritz/Twitch-Companion-JS-server/issues/50)) | `GET /helix/polls` nur nach 404 vom Server (älterer Stand), bis zum Neuladen; `POST /helix/chat/messages` nur mit `WIDGET_CHAT_MESSAGE: true` (Vorgabe aus); `GET /helix/users` nur ohne `broadcaster_id` |
 | Laufender Server des Nutzers | `main` ab `ebbb62b` laut Nutzer (14.11.2026), nicht selbst geprüft |
-| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium; Stand 0.9.5: 64 Prüfungen inklusive Demo, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
+| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium; Stand 1.0.0: 73 Prüfungen inklusive Demo und Darstellung, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
 
 ## Konfiguration
 | Konstante | Wert | Bedeutung |
@@ -93,8 +94,8 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 | `WIDGET_CHAT_MESSAGE` | `false` | `true`: Widget sendet die Ergebniszeile selbst per Helix; nur für Server ohne Ergebniszeilen, nie zusammen mit `results poll on` |
 | `STALE_GRACE_MS` | `30000` | ohne gültigen Stand so lange nach Ablauf der Zeit warten, dann ohne Endsequenz ausblenden |
 | `AUTO_HIDE` | `true` | ohne Poll ausblenden; `false` = dauerhaft sichtbar (vor 0.9.5 blieb das Widget dann unsichtbar) |
-| `ENDED_OVERLAY_DURATION` | `3000` | Overlay-Dauer in ms |
-| `RESULT_DISPLAY_DURATION` | `7000` | Ergebnisdauer im festen Ausblendpfad in ms |
+| `END_SETTLE_MS` | `1400` | so lange wächst der Endstand, bevor Banner, Sieger und Ton kommen (seit 1.0; ersetzt `ENDED_OVERLAY_DURATION`) |
+| `RESULT_DISPLAY_DURATION` | `8000` | so lange steht das Ergebnis, dann blendet das Widget aus |
 | `POLL_CHECK_INTERVAL_ACTIVE` | `2000` | aktives Abfrageintervall in ms |
 | `POLL_CHECK_INTERVAL_IDLE` | `5000` | Idle-Abfrageintervall in ms |
 | `AUTH_RETRY.START_DELAYS_MS` | `[10000, 30000, 60000]` | Wartezeiten der Start-Wiederholungen; der letzte Wert wiederholt sich |

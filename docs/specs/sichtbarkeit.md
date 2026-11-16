@@ -4,7 +4,7 @@
 Widget ohne Poll verbergen und Startstatus anzeigen.
 
 ## Verhalten
-AUTO_HIDE steuert Ein-/Ausblenden; Leerzustand und Statuspunkt werden über UI-Hilfsfunktionen gesetzt. Statuspunkt ist kein verlässlicher Chat-Zustellnachweis. Seit 0.9.0 zeigt er den Erfolg der letzten Abfrage beim Server: grün nach gültiger Antwort, rot bei Fehler oder ungültiger Antwort.
+AUTO_HIDE steuert Ein-/Ausblenden (seit 1.0 mit Gleiten von unten, 0,45 s); Leerzustand und Statuspunkt werden über UI-Hilfsfunktionen gesetzt. Statuspunkt ist kein verlässlicher Chat-Zustellnachweis. Seit 0.9.0 zeigt er den Erfolg der letzten Abfrage beim Server: grün nach gültiger Antwort, rot bei Fehler oder ungültiger Antwort.
 
 ## Nicht-Ziele
 Neue Statusüberwachung ergänzen.

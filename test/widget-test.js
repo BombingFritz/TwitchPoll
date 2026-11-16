@@ -128,6 +128,13 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
       const cols = Array.from(document.querySelectorAll('.poll-option'));
       return cols[0].classList.contains('winner') && cols.slice(1).every(c => c.classList.contains('dim') && !c.classList.contains('winner'));
     }), '1.0: Sieger hervorgehoben, übrige abgedunkelt');
+    await sleep(1000); // Übergang der Stangenhöhe läuft in Echtzeit
+    const rays = await page.evaluate(() => {
+      const col = document.querySelector('.poll-option.winner');
+      const r = col.querySelector('.winner-tip-deco').getBoundingClientRect(), t = col.querySelector('.tip').getBoundingClientRect();
+      return { dx: (r.left + r.width / 2) - (t.left + t.width * 61 / 112), dy: (r.top + r.height / 2) - (t.top + 30) };
+    });
+    ok(Math.abs(rays.dx) <= 2 && Math.abs(rays.dy) <= 3, `1.0.1: Strahlenkranz mittig auf dem Spargelkopf (Abweichung ${rays.dx.toFixed(1)} / ${rays.dy.toFixed(1)} px)`);
     ok(await page.evaluate(() => window.__firstBar === document.querySelector('.poll-option')), '1.0: Endsequenz ohne Neuaufbau der Stangen');
     st.poll = Object.assign({}, st.poll, { status: 'ARCHIVED' });
     await advance(page, 14000);

@@ -5,6 +5,13 @@ Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-16
+
+Geprüft mit `npm test` (74 Prüfungen, 0 FAIL) und Screenshots der Demo-Beispiele zwei, vier und 100 % im Headless-Chromium; nicht in OBS.
+
+### Fixed
+- Strahlenkranz des Siegers saß über der Spitze und leicht links daneben (Nutzer, Screenshot 16.11.2026). Er liegt jetzt mittig auf dem Spargelkopf: rund 30 px unter der Spitze und auf der Spargelachse, die in der Grafik 4 px rechts der Bildmitte liegt.
+
 ## [1.0.0] - 2026-11-16
 
 Design-Update (ADR 0010). Als Entwurf in `demo.html` neben 0.9.5 verglichen und vom Nutzer abgenommen. Geprüft mit `npm test` (73 Prüfungen, 0 FAIL) und Screenshots aller Demo-Beispiele im Headless-Chromium; nicht in OBS, nicht im Stream. OBS-Pfad und Quellgröße 800 × 600 bleiben gleich, Server-Anbindung, Ergebnislogik, Ton und Chat unverändert.

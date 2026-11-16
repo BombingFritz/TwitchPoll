@@ -3,6 +3,7 @@ Historische Angaben stammen aus Diskussion/Zusammenfassungen, nicht aus einer hi
 
 | Symptom | Ursache | Fix | Regel zur Vermeidung |
 |---|---|---|---|
+| Strahlenkranz nicht auf der Spargelspitze zentriert (1.0.0) | Kranz zielte auf die äußerste Spitze statt auf den Kopf und auf die Spaltenmitte; die Spargelachse liegt in der Grafik bei x = 61 von 112 (Nutzer, 16.11.2026) | 1.0.1: Kranz 30 px unter der Spitze und 4 px nach rechts versetzt | Test misst die Lage des Kranzes zur Spargelachse. |
 | Heller Saum (Halo) um die Spargelstangen | Deckende helle Randpixel in Spitze und Mittelstück, offenbar vom Freistellen vor weißem Grund; beim Verkleinern sichtbar (Nutzer, 16.11.2026) | 1.0.0: Grafiken einmalig bereinigt (ADR 0010) | Grafiken nicht neu generieren; Prüfsummen in ARCHITEKTUR. |
 | Animation unruhig, Endstand baut sich neu auf | Wachstum in Stücken je 10 % (ganze Bilder), Neuaufbau nach dem Overlay, Overlay ohne Übergang | 1.0.0: stufenlose Stange mit Übergang, Endsequenz ohne Neuaufbau (ADR 0010) | Updates nur über Werte, nie über Neuaufbau. |
 | Längste Stange ragt ins Gras, Rahmen rechts abgeschnitten, „Sekunden“ unlesbar, Timer über langer Frage | Stückhöhe passte bei 100 % nicht ins Feld; Standardabstand des Body plus Rahmen außerhalb der 800 px; Beschriftung ohne Stil; Timer absolut positioniert (gefunden 14.11.2026) | 1.0.0: Skala passend zum Feld, `box-sizing` und Body ohne Abstand, Statusschild statt Timer | Demo-Beispiele 100 % und lange Namen ansehen. |

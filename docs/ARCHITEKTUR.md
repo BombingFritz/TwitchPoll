@@ -81,7 +81,7 @@ Server: [`BombingFritz/Twitch-Companion-JS-server`](https://github.com/BombingFr
 | Genutzt (0.9.0) | `GET /token` (`access_token`, `client_id`, `broadcaster_id`; nur noch für Start und Legacy-Wege nötig); `GET /api/twitch/poll/current` im bisherigen Takt (ADR 0009). Ergebniszeile sendet der Server (Schalter `results poll on\|off`, Vorgabe aus; einschalten, sobald 0.9.0 in OBS läuft) |
 | Legacy-Ausnahmen (direkt an Twitch, Übergang nach Server-Issue [#50](https://github.com/BombingFritz/Twitch-Companion-JS-server/issues/50)) | `GET /helix/polls` nur nach 404 vom Server (älterer Stand), bis zum Neuladen; `POST /helix/chat/messages` nur mit `WIDGET_CHAT_MESSAGE: true` (Vorgabe aus); `GET /helix/users` nur ohne `broadcaster_id` |
 | Laufender Server des Nutzers | `main` ab `ebbb62b` laut Nutzer (14.11.2026), nicht selbst geprüft |
-| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium; Stand 1.0.0: 73 Prüfungen inklusive Demo und Darstellung, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
+| Integrations-Teststatus | 0.9.0: `test/widget-test.js` gegen nachgebildeten Server und Twitch (Headless-Chromium; Stand 1.0.1: 74 Prüfungen inklusive Demo und Darstellung, 0 FAIL). Nicht gegen den echten Server, nicht in OBS, nicht im Stream. `/token` mit 0.8.2 im Stream erprobt (Nutzer, 14.11.2026) |
 
 ## Konfiguration
 | Konstante | Wert | Bedeutung |

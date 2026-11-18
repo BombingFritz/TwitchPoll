@@ -146,6 +146,7 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     c = await counts(page);
     ok(c.overlays === 1 && c.sounds === 1, 'ARCHIVED bleibt stehen: nichts wiederholt');
     ok(st.chat.length === 0, 'Vorgabe: Widget sendet keine Chat-Zeile');
+    ok(st.tokenCalls === 1, 'Kein weiterer /token-Abruf während und nach der Endsequenz (Issue #5)');
     ok(st.console.some(l => l.includes('sendet der Server') && l.includes('Den längsten Spargel hat "Typ VII" mit 50 Prozent')), 'Ergebniszeile nur im Log, Text wie bisher');
     ok(!st.console.some(l => l.startsWith('PAGEERROR')), 'Keine Skriptfehler');
     await page.context().close();
@@ -343,6 +344,27 @@ const connected = page => page.evaluate(() => document.getElementById('statusInd
     ok((await page.frameLocator('#frameA').locator('#widgetContainer').count()) === 1, 'demo.html: Widget eingebunden');
     ok(await page.evaluate(() => getComputedStyle(document.getElementById('boxB')).display === 'none'), 'demo.html: ohne Entwurf nur ein Widget');
     await ctx.close();
+  }
+
+  // 15) Verspäteter Endstatus der vorigen Abstimmung während einer neuen (Stream 17.11.2026, 1.0.1)
+  {
+    const st = {};
+    const page = await open(browser, st);
+    await advance(page, 500);
+    const old = serverPoll({ id: 'alt', title: 'Alte Abstimmung', now: await now(page) - 90000, votes: [9, 1] });
+    st.poll = serverPoll({ id: 'neu', now: await now(page), votes: [1, 3, 0] });
+    await advance(page, 5500);
+    st.poll = Object.assign({}, old, { status: 'ARCHIVED' });
+    await advance(page, 4000);
+    ok((await counts(page)).overlays === 0, 'Fremder Endstatus: keine Endsequenz');
+    ok(await visible(page) && (await text(page, '#pollQuestion')) === 'Welches Boot nehmen wir heute?', 'Fremder Endstatus: neue Abstimmung bleibt sichtbar');
+    st.poll = serverPoll({ id: 'neu', now: await now(page) - 9500, votes: [1, 7, 2] });
+    await advance(page, 2500);
+    ok((await text(page, '.label-group .option-percentage')) !== null && (await page.evaluate(() => document.querySelectorAll('.option-percentage')[1].textContent)) === '70%', 'Fremder Endstatus: Aktualisierung läuft danach weiter');
+    st.poll = Object.assign({}, st.poll, { status: 'COMPLETED' });
+    await advance(page, 4000);
+    ok((await counts(page)).overlays === 1 && (await text(page, '#bannerText')).includes('»Typ IX«'), 'Danach: eine Endsequenz mit dem Ergebnis der neuen Abstimmung');
+    await page.context().close();
   }
 
   // 14) Statusschild (1.0): pulsiert in den letzten 15 s, rot in den letzten 10 s

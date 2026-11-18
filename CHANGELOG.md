@@ -7,10 +7,11 @@ Frühere Dateistände vor 0.8.0 (u. a. „v7“, „v8“, „StablePolln_v7f“
 
 ## [1.0.1] - 2026-11-16
 
-Geprüft mit `npm test` (74 Prüfungen, 0 FAIL) und Screenshots der Demo-Beispiele zwei, vier und 100 % im Headless-Chromium; nicht in OBS.
+Geprüft mit `npm test` (79 Prüfungen, 0 FAIL) und Screenshots der Demo-Beispiele zwei, vier und 100 % im Headless-Chromium; nicht in OBS. 1.0.0 lief im Live-Stream am 17./18.11.2026 einwandfrei (Nutzer).
 
 ### Fixed
 - Strahlenkranz des Siegers saß über der Spitze und leicht links daneben (Nutzer, Screenshot 16.11.2026). Er liegt jetzt mittig auf dem Spargelkopf: rund 30 px unter der Spitze und auf der Spargelachse, die in der Grafik 4 px rechts der Bildmitte liegt.
+- Ein Endstatus einer anderen Abstimmung beendet die angezeigte nicht mehr. Im Stream vom 17.11.2026 lieferte Twitch kurz nach dem Start einer neuen Abstimmung noch `ARCHIVED` für die vorige; hätte das Widget diesen Moment getroffen, hätte es die neue Abstimmung mit dem Ergebnis der alten beendet (gemeldet von der Server-Session in Issue #3).
 
 ## [1.0.0] - 2026-11-16
 

@@ -20,6 +20,7 @@ Auth-Server implementieren; EventSub/IRC; Twitch im Normalbetrieb selbst fragen.
 - Eine neue aktive Poll startet Darstellung und Timer (Ende aus `endsAt`).
 - Eine bekannte aktive Poll aktualisiert die vorhandene Darstellung.
 - Ein Endstatus einer angezeigten Poll startet genau eine Endsequenz; `ARCHIVED` nach `COMPLETED` startet keine zweite.
+- Ein Endstatus mit anderer Poll-ID als der angezeigten (verspätetes Ende der vorigen Abstimmung) beendet die Darstellung nicht.
 - Bei nicht erreichbarer Tokenquelle wird der Fehler geloggt, „Auth-Server nicht erreichbar!“ angezeigt und der Start automatisch wiederholt (10 s, 30 s, dann alle 60 s).
 - Nach erfolgreichem Wiederholungsstart erscheint „Warte auf Abstimmung...“ und das Polling läuft normal.
 - Bei 401/403 auf einem Legacy-Weg (Helix-Abfrage, Chat-Versand) wird der Token höchstens einmal je 30 s erneuert und der Aufruf genau einmal wiederholt.

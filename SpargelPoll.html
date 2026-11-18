@@ -751,8 +751,13 @@
                         updatePollFromAPI(poll);
                     }
                 } else if (poll.status === 'COMPLETED' || poll.status === 'TERMINATED' || poll.status === 'ARCHIVED') {
-                    if (currentPoll && !pollEndedInProgress) {
+                    if (currentPoll && !pollEndedInProgress && poll.id === currentPollId) {
                         triggerPollEnded(poll);
+                    } else if (currentPoll && !pollEndedInProgress) {
+                        // 1.0.1: Endstatus einer anderen Abstimmung (z. B. verspätetes ARCHIVED der vorigen, Stream 17.11.2026):
+                        // laufende Darstellung nicht beenden; kommt kein Ende mehr, blendet keepOrGiveUp nach Ablauf aus
+                        warnPollOnce('Endstatus ' + poll.status + ' gehört zu einer anderen Abstimmung als der angezeigten');
+                        keepOrGiveUp();
                     } else if (!currentPoll) {
                         // Poll bereits beendet aber Widget zeigt noch nichts (oder ARCHIVED nach COMPLETED) — idle bleiben
                         hideWhenNoPoll();

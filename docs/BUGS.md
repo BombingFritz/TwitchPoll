@@ -3,6 +3,7 @@ Historische Angaben stammen aus Diskussion/Zusammenfassungen, nicht aus einer hi
 
 | Symptom | Ursache | Fix | Regel zur Vermeidung |
 |---|---|---|---|
+| Gefahr: Verspätetes `ARCHIVED` der vorigen Abstimmung beendet die neue mit dem alten Ergebnis | Endstatus wurde ohne Abgleich der Poll-ID übernommen; Twitch lieferte im Stream vom 17.11.2026 kurz nach dem Start einer neuen Abstimmung noch `ARCHIVED` der vorigen (Serverprotokoll, Issue #3); im Widget nicht aufgetreten, weil das Zeitfenster unter 1 s lag | 1.0.1: Endsequenz nur, wenn der Endstatus zur angezeigten Poll-ID gehört | Test 15 in `test/widget-test.js`. |
 | Strahlenkranz nicht auf der Spargelspitze zentriert (1.0.0) | Kranz zielte auf die äußerste Spitze statt auf den Kopf und auf die Spaltenmitte; die Spargelachse liegt in der Grafik bei x = 61 von 112 (Nutzer, 16.11.2026) | 1.0.1: Kranz 30 px unter der Spitze und 4 px nach rechts versetzt | Test misst die Lage des Kranzes zur Spargelachse. |
 | Heller Saum (Halo) um die Spargelstangen | Deckende helle Randpixel in Spitze und Mittelstück, offenbar vom Freistellen vor weißem Grund; beim Verkleinern sichtbar (Nutzer, 16.11.2026) | 1.0.0: Grafiken einmalig bereinigt (ADR 0010) | Grafiken nicht neu generieren; Prüfsummen in ARCHITEKTUR. |
 | Animation unruhig, Endstand baut sich neu auf | Wachstum in Stücken je 10 % (ganze Bilder), Neuaufbau nach dem Overlay, Overlay ohne Übergang | 1.0.0: stufenlose Stange mit Übergang, Endsequenz ohne Neuaufbau (ADR 0010) | Updates nur über Werte, nie über Neuaufbau. |

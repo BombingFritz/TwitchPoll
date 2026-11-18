@@ -14,7 +14,7 @@ Lange Texte verkleinern die Schrift bis 24 px, danach „…“. Zugleich einmal
 Stechen; Vollbild-Overlay (bis 0.9.5).
 
 ## Akzeptanzkriterien
-- Ein eindeutiger Sieger erhält Banner „Ergebnis“, Hervorhebung und Strahlenkranz.
+- Ein eindeutiger Sieger erhält Banner „Ergebnis“, Hervorhebung und Strahlenkranz; der Kranz sitzt mittig auf dem Spargelkopf.
 - Bei Gleichstand und Nullstimmen erhält keine Option Sieger-Styling.
 - Die Stangen bleiben während der ganzen Endsequenz sichtbar; kein Neuaufbau.
 - Wiederholter Endaufruf während der Sequenz wird ignoriert; `ARCHIVED` danach löst nichts aus.
